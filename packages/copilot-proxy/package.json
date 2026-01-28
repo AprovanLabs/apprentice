@@ -1,0 +1,44 @@
+{
+  "name": "@apprentice/copilot-proxy",
+  "version": "0.1.0",
+  "description": "GitHub Copilot OpenAI-compatible proxy",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "copilot-proxy": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "import": "./dist/server/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "keytar": "^7.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2"
+  },
+  "keywords": [
+    "github",
+    "copilot",
+    "openai",
+    "proxy",
+    "llm"
+  ],
+  "license": "MIT"
+}

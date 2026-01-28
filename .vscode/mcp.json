@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "apprentice": {
+      "command": "node",
+      "args": ["packages/apprentice/dist/mcp-server.js"],
+      "env": {}
+    }
+  }
+}

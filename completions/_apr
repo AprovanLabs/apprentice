@@ -1,0 +1,168 @@
+#compdef apr
+
+# Zsh completion for Apprentice (apr)
+
+_apr() {
+  local -a commands
+  commands=(
+    'search:Search unified knowledge base (events and assets)'
+    'run:Execute an asset (script) with arguments'
+    'context:Manage indexed contexts'
+    'index:Index contexts, events, and generate embeddings'
+    'completions:Generate completions for shell (internal use)'
+    'import:Import data from external sources'
+    'daemon:Start the chat interface daemon'
+    'providers:Manage AI provider connections'
+  )
+
+  _arguments -C \
+    '1: :->command' \
+    '*: :->args'
+
+  case $state in
+    command)
+      _describe -t commands 'apr command' commands
+      ;;
+    args)
+      case $words[2] in
+        run)
+          if [[ $CURRENT -eq 3 ]]; then
+            _message 'asset-id-or-path (e.g., scripts:deploy.sh or ./script.sh)'
+          fi
+          ;;
+        search)
+          _arguments \
+            '--json[Output as JSON]' \
+            '--md[Output as Markdown]' \
+            '-n[Maximum results]:number:' \
+            '--limit[Maximum results]:number:' \
+            '--since[Filter to items since time (e.g., 1h, 30m, 2d)]:time:' \
+            '--scope[Search scope]:scope:(events assets all)' \
+            '--mode[Search mode]:mode:(fts vector hybrid)' \
+            '-f[Filter by metadata (repeatable)]:filter:' \
+            '--filter[Filter by metadata (repeatable)]:filter:' \
+            '--related[Include related context for event results]' \
+            '--group-by[Group related events by metadata field]:field:' \
+            '--order-by[Order related events by field]:field:' \
+            '--direction[Sort direction]:direction:(asc desc)' \
+            '--window[Temporal window in seconds for fallback]:seconds:' \
+            '--related-limit[Max related events per result]:number:'
+          ;;
+        index)
+          _arguments \
+            '-c[Index specific context]:context-id:' \
+            '--context[Index specific context]:context-id:' \
+            '-a[Index all contexts (including disabled)]' \
+            '--all[Index all contexts (including disabled)]' \
+            '--versions-only[Only sync versions, skip file indexing]' \
+            '--no-versions[Skip version syncing]' \
+            '--version-depth[Max commits to sync]:number:'
+          ;;
+        context)
+          local -a context_subcommands
+          context_subcommands=(
+            'list:List all registered contexts'
+            'ls:List all registered contexts'
+            'add:Register a new context or mount a path'
+            'show:Show context details'
+            'enable:Enable indexing for a context'
+            'disable:Disable indexing for a context'
+            'remove:Unregister a context'
+            'rm:Unregister a context'
+            'unmount:Remove a mount from a context'
+          )
+          if [[ $CURRENT -eq 3 ]]; then
+            _describe -t commands 'context subcommand' context_subcommands
+          elif [[ $CURRENT -ge 4 ]]; then
+            case $words[3] in
+              add)
+                _arguments \
+                  '1:path:_files -/' \
+                  '-n[Context name]:name:' \
+                  '--name[Context name]:name:' \
+                  '-p[Mount path to existing context]:parent-id:' \
+                  '--parent[Mount path to existing context]:parent-id:' \
+                  '-m[Virtual mount point (required with --parent)]:mount:' \
+                  '--mount[Virtual mount point (required with --parent)]:mount:' \
+                  '*-i[Include pattern (repeatable)]:pattern:' \
+                  '*--include[Include pattern (repeatable)]:pattern:' \
+                  '*-e[Exclude pattern (repeatable)]:pattern:' \
+                  '*--exclude[Exclude pattern (repeatable)]:pattern:' \
+                  '--no-versioning[Disable Git version tracking]' \
+                  '--version-branches[Branches to track (comma-separated)]:branches:'
+                ;;
+              show|enable|disable|remove|rm)
+                _message 'context-id'
+                ;;
+              unmount)
+                if [[ $CURRENT -eq 4 ]]; then
+                  _message 'context-id'
+                elif [[ $CURRENT -eq 5 ]]; then
+                  _message 'mount-point-or-path'
+                fi
+                ;;
+              list|ls)
+                ;;
+            esac
+          fi
+          ;;
+        import)
+          local -a import_subcommands
+          import_subcommands=(
+            'chat:Import chat history from AI assistants'
+          )
+          if [[ $CURRENT -eq 3 ]]; then
+            _describe -t commands 'import subcommand' import_subcommands
+          elif [[ $words[3] == "chat" ]]; then
+            _arguments \
+              '-s[Import from specific source]:source:(copilot)' \
+              '--source[Import from specific source]:source:(copilot)' \
+              '--list-sources[List available import sources]' \
+              '--status[Show import status for all sources]' \
+              '--reset[Reset import state]:source:' \
+              '-v[Show verbose output]' \
+              '--verbose[Show verbose output]'
+          fi
+          ;;
+        providers|provider)
+          local -a provider_subcommands
+          provider_subcommands=(
+            'connect:Connect to an AI provider'
+            'disconnect:Disconnect from an AI provider'
+            'status:Show connection status for all providers'
+            'models:List available models from connected providers'
+          )
+          if [[ $CURRENT -eq 3 ]]; then
+            _describe -t commands 'providers subcommand' provider_subcommands
+          elif [[ $CURRENT -eq 4 ]]; then
+            case $words[3] in
+              connect|disconnect)
+                _values 'provider' 'copilot'
+                ;;
+              models)
+                _arguments \
+                  '-p[Filter by provider]:provider:(copilot)' \
+                  '--provider[Filter by provider]:provider:(copilot)'
+                ;;
+            esac
+          fi
+          ;;
+        completions)
+          _arguments \
+            '-t[Completion type]:type:(scripts script-args git-suggest)' \
+            '--type[Completion type]:type:(scripts script-args git-suggest)' \
+            '-s[Script name]:script:' \
+            '--script[Script name]:script:' \
+            '-p[Filter by prefix]:prefix:' \
+            '--prefix[Filter by prefix]:prefix:' \
+            '--cwd[Working directory]:path:_files -/' \
+            '--branch[Git branch]:branch:'
+          ;;
+        daemon)
+          ;;
+      esac
+      ;;
+  esac
+}
+
+_apr "$@"

@@ -1,0 +1,52 @@
+{
+  "name": "@aprovan/apprentice",
+  "version": "0.1.0",
+  "description": "Apprentice core - learns from you",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "apr": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "check-types": "tsc --noEmit",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@apprentice/copilot-proxy": "workspace:*",
+    "@aprovan/patchwork": "workspace:*",
+    "@libsql/client": "^0.17.0",
+    "@modelcontextprotocol/sdk": "^1.25.2",
+    "chalk": "^5.4.1",
+    "commander": "^13.0.0",
+    "discord.js": "^14.25.1",
+    "dotenv": "^17.2.3",
+    "esbuild": "^0.27.2",
+    "glob": "^11.0.0",
+    "ink": "^6.6.0",
+    "js-yaml": "^4.1.0",
+    "keytar": "^7.9.0",
+    "lodash": "^4.17.23",
+    "marked": "^17.0.1",
+    "marked-terminal": "^7.3.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "sharp": "^0.34.5",
+    "uuidv7": "^1.1.0",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/lodash": "^4.17.23",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.2.9",
+    "@types/react-dom": "^19.2.3",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

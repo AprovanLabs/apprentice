@@ -1,0 +1,34 @@
+# Apprentice Configuration
+# Place this file at $APPRENTICE_HOME/config.yaml
+
+# Chat import settings
+# Auto-import chat history from AI assistants (Copilot, Cursor, etc.)
+chatImport.enabled: true
+
+# Import interval in milliseconds (default: 300000 = 5 minutes)
+# chatImport.intervalMs: 300000
+
+embeddings:
+  enabled: true
+  model: ollama/nomic-embed-text
+
+search:
+  defaultMode: hybrid
+  hybridWeights:
+    fts: 0.8
+    vector: 0.2
+
+daemon:
+  discord:
+    enabled: true
+  agent:
+    type: cursor
+    timeoutMinutes: 30
+  progress:
+    theme: dark
+
+patchwork:
+  widgets_dir: '~/.apprentice/widgets'
+  cache:
+    enabled: true
+  services: {}

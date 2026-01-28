@@ -1,0 +1,27 @@
+{
+  "name": "@aprovan/patchwork-terminal-experiment",
+  "version": "0.0.1",
+  "description": "Experimental package for Patchwork terminal runtime - Ink rendering tests",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "tsx src/test-runtime.ts",
+    "test:hooks": "tsx src/test-hooks.ts",
+    "test:instances": "tsx src/test-instances.tsx",
+    "test:bundling": "tsx src/test-bundling.ts",
+    "test:meta": "tsx src/test-meta.ts",
+    "test:all": "tsx src/run-all-tests.ts",
+    "demo": "tsx src/demo.tsx"
+  },
+  "dependencies": {
+    "esbuild": "^0.24.2",
+    "ink": "^5.1.0",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/react": "^18.3.18",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
