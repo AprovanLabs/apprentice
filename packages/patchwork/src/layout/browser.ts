@@ -2,22 +2,20 @@
 
 import type {
   LayoutManager,
-  LayoutPreset,
   LayoutSpec,
   SlotId,
   SlotBounds,
   SlotDefinition,
   MountedWidget,
-} from './types.js';
-import { PRESETS, getPreset } from './presets.js';
-import { loadWidget } from '../runtime/loader.js';
-import { executeBrowserWidget } from '../runtime/browser/index.js';
-import type { Services } from '../runtime/types.js';
+} from './types';
+import { loadWidget } from '../runtime/loader';
+import { executeBrowserWidget } from '../runtime/browser/index';
+import type { Services } from '../runtime/types';
 
 export interface BrowserLayoutOptions {
   container?: string;
   services?: Services;
-  preset?: string;
+  slots?: SlotDefinition[];
   responsive?: boolean;
 }
 
@@ -97,12 +95,12 @@ function generateGridTemplate(slots: SlotDefinition[]): {
 }
 
 export function generateLayoutCSS(
-  preset: LayoutPreset,
+  slots: SlotDefinition[],
   containerId: string,
 ): string {
-  const grid = generateGridTemplate(preset.slots);
+  const grid = generateGridTemplate(slots);
 
-  const slotStyles = preset.slots
+  const slotStyles = slots
     .map(
       (slot) => `
 #${containerId} .patchwork-slot-${slot.id} {
@@ -133,10 +131,10 @@ ${slotStyles}
 }
 
 export function generateLayoutHTML(
-  preset: LayoutPreset,
+  slots: SlotDefinition[],
   containerId: string,
 ): string {
-  const slotDivs = preset.slots
+  const slotDivs = slots
     .map(
       (slot) =>
         `  <div class="patchwork-slot-${slot.id}" data-slot-id="${slot.id}"></div>`,
@@ -152,17 +150,21 @@ interface SlotMount {
   html?: string;
 }
 
+const DEFAULT_SLOTS: SlotDefinition[] = [
+  { id: 'main', position: 'center', width: 'fill', height: 'fill' },
+  { id: 'status', position: 'bottom', width: 'fill', height: 4 },
+];
+
 export function createBrowserLayoutManager(
   options: BrowserLayoutOptions = {},
 ): LayoutManager {
-  const { services = {}, preset: initialPreset = 'minimal' } = options;
-  let currentPreset = getPreset(initialPreset) || PRESETS.minimal!;
+  const { services = {}, slots: slotDefs = DEFAULT_SLOTS } = options;
   let viewport = { width: 800, height: 600 };
   const mounted = new Map<SlotId, SlotMount>();
 
   function calculateBounds(): Map<SlotId, SlotBounds> {
     const bounds = new Map<SlotId, SlotBounds>();
-    for (const slot of currentPreset.slots) {
+    for (const slot of slotDefs) {
       const width =
         slot.width === 'fill' ? Math.floor(viewport.width / 2) : slot.width * 8;
       const height =
@@ -175,16 +177,6 @@ export function createBrowserLayoutManager(
   }
 
   const manager: LayoutManager = {
-    getPresets(): LayoutPreset[] {
-      return Object.values(PRESETS);
-    },
-
-    setPreset(name: string): void {
-      const preset = getPreset(name);
-      if (!preset) throw new Error(`Unknown preset: ${name}`);
-      currentPreset = preset;
-    },
-
     getSlots(): Map<SlotId, SlotBounds> {
       return calculateBounds();
     },
@@ -194,7 +186,7 @@ export function createBrowserLayoutManager(
       widgetPath: string,
       props: Record<string, unknown> = {},
     ): Promise<void> {
-      if (!currentPreset.slots.find((s) => s.id === slotId)) {
+      if (!slotDefs.find((s) => s.id === slotId)) {
         throw new Error(`Slot '${slotId}' not found in current layout`);
       }
 
@@ -212,7 +204,6 @@ export function createBrowserLayoutManager(
       const execResult = await executeBrowserWidget(
         widgetPath,
         result.widget.meta,
-        services,
         { props },
       );
 
@@ -235,7 +226,6 @@ export function createBrowserLayoutManager(
     },
 
     async applyLayout(spec: LayoutSpec): Promise<void> {
-      if (spec.preset) this.setPreset(spec.preset);
       this.unmountAll();
 
       for (const assignment of spec.slots) {
@@ -260,14 +250,11 @@ export function createBrowserLayoutManager(
 }
 
 export function getLayoutAssets(
-  presetName: string,
+  slots: SlotDefinition[],
   containerId = 'patchwork-container',
 ): { css: string; html: string } {
-  const preset = getPreset(presetName);
-  if (!preset) throw new Error(`Unknown preset: ${presetName}`);
-
   return {
-    css: generateLayoutCSS(preset, containerId),
-    html: generateLayoutHTML(preset, containerId),
+    css: generateLayoutCSS(slots, containerId),
+    html: generateLayoutHTML(slots, containerId),
   };
 }

@@ -1,19 +1,18 @@
 // Patchwork Layout - Slot-based layout system for widget orchestration
 
-export * from './types.js';
-export { PRESETS, getPreset, getPresetNames } from './presets.js';
+export * from './types';
 export {
   createTerminalLayoutManager,
   renderLayout,
   type TerminalLayoutManagerOptions,
-} from './terminal.js';
+} from './terminal';
 export {
   createBrowserLayoutManager,
   generateLayoutCSS,
   generateLayoutHTML,
   getLayoutAssets,
   type BrowserLayoutOptions,
-} from './browser.js';
+} from './browser';
 export {
   createHotReloadManager,
   getHotReloadManager,
@@ -23,4 +22,4 @@ export {
   type HotReloadOptions,
   type HotReloadManager,
   type WidgetChangeEvent,
-} from './hot-reload.js';
+} from './hot-reload';

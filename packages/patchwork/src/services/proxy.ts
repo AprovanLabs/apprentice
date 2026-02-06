@@ -1,22 +1,75 @@
-// Service Proxy - Routes procedure calls from widgets to configured backends
+// Service Proxy - Caching layer for service calls
+//
+// Provides a backend-agnostic service proxy with caching.
+// The actual backend (UTCP, MCP, HTTP, etc.) is set via setServiceBackend().
 
-import type {
-  ServiceConfig,
-  ServiceResult,
-  ServiceBackend,
-  CacheEntry,
-  CacheConfig,
-} from './types.js';
-import { createMcpBackend } from './backends/mcp.js';
-import { createHttpBackend } from './backends/http.js';
-import { createShellBackend } from './backends/shell.js';
-import { createStoreBackend } from './backends/store.js';
-import { getPatchworkConfig } from '../runtime/config.js';
+import type { ServiceResult, CacheEntry, CacheConfig } from './types.js';
 
-const backends = new Map<string, ServiceBackend>();
+/**
+ * Service backend interface - abstracts the actual service call mechanism
+ *
+ * Implementations can use UTCP, MCP, HTTP, or any other protocol.
+ */
+export interface ServiceBackend {
+  /**
+   * Call a service procedure
+   * @param service - Service namespace (e.g., "git", "github")
+   * @param procedure - Procedure name (e.g., "branch", "repos.list")
+   * @param args - Arguments to pass
+   */
+  call(service: string, procedure: string, args: unknown[]): Promise<unknown>;
+}
+
+// Current backend (must be set before use)
+let currentBackend: ServiceBackend | null = null;
+
+// Cache storage
 const cache = new Map<string, CacheEntry>();
 const cacheConfig = new Map<string, CacheConfig>();
 const MAX_CACHE_SIZE = 1000;
+
+/**
+ * Set the service backend
+ *
+ * This must be called before making any service calls.
+ * The backend handles the actual communication with services.
+ *
+ * @example
+ * ```typescript
+ * // Using with UTCP
+ * setServiceBackend({
+ *   call: (service, procedure, args) =>
+ *     utcpClient.callTool(`${service}.${procedure}`, args)
+ * });
+ *
+ * // Using with HTTP proxy
+ * setServiceBackend({
+ *   call: async (service, procedure, args) => {
+ *     const res = await fetch(`/api/proxy/${service}/${procedure}`, {
+ *       method: 'POST',
+ *       body: JSON.stringify({ args })
+ *     });
+ *     return res.json();
+ *   }
+ * });
+ * ```
+ */
+export function setServiceBackend(backend: ServiceBackend): void {
+  currentBackend = backend;
+}
+
+/**
+ * Create a service proxy that wraps the backend with caching
+ */
+export function createServiceProxy(): ServiceBackend {
+  return {
+    call: (service, procedure, args) =>
+      callProcedure(service, procedure, args).then((r) => {
+        if (!r.success) throw new Error(r.error || 'Service call failed');
+        return r.data;
+      }),
+  };
+}
 
 function getCacheKey(
   service: string,
@@ -49,43 +102,14 @@ function setCache(key: string, result: ServiceResult, ttl: number): void {
   cache.set(key, { result, expiresAt: Date.now() + ttl * 1000 });
 }
 
-async function getOrCreateBackend(
-  serviceName: string,
-): Promise<ServiceBackend> {
-  const existing = backends.get(serviceName);
-  if (existing) return existing;
-
-  const config = getPatchworkConfig();
-  const serviceConfig = config.services[serviceName] as
-    | ServiceConfig
-    | undefined;
-
-  if (!serviceConfig) {
-    throw new Error(`Service '${serviceName}' not configured`);
-  }
-
-  let backend: ServiceBackend;
-  switch (serviceConfig.backend) {
-    case 'mcp':
-      backend = await createMcpBackend(serviceName, serviceConfig);
-      break;
-    case 'http':
-      backend = await createHttpBackend(serviceName, serviceConfig);
-      break;
-    case 'shell':
-      backend = await createShellBackend(serviceName, serviceConfig);
-      break;
-    case 'store':
-      backend = await createStoreBackend(serviceName, serviceConfig);
-      break;
-    default:
-      throw new Error(`Unknown backend type: ${serviceConfig.backend}`);
-  }
-
-  backends.set(serviceName, backend);
-  return backend;
-}
-
+/**
+ * Call a service procedure
+ *
+ * @param service - Service namespace (e.g., "git", "github")
+ * @param procedure - Procedure name (e.g., "branch", "repos.get")
+ * @param args - Arguments to pass
+ * @param options - Call options
+ */
 export async function callProcedure(
   service: string,
   procedure: string,
@@ -95,25 +119,57 @@ export async function callProcedure(
   const cacheKey = getCacheKey(service, procedure, args);
   const ttlConfig = cacheConfig.get(service);
 
+  // Check cache first
   if (!options.bypassCache && ttlConfig) {
     const cached = getFromCache(cacheKey);
     if (cached) return cached;
   }
 
-  const backend = await getOrCreateBackend(service);
-  const result = await backend.call(procedure, args);
-
-  if (result.success && ttlConfig) {
-    setCache(cacheKey, result, ttlConfig.ttl);
+  // Check if backend is configured
+  if (!currentBackend) {
+    return {
+      success: false,
+      error: 'No service backend configured. Call setServiceBackend() first.',
+      durationMs: 0,
+    };
   }
 
-  return result;
+  const startTime = performance.now();
+
+  try {
+    const data = await currentBackend.call(service, procedure, args);
+
+    const serviceResult: ServiceResult = {
+      success: true,
+      data,
+      durationMs: performance.now() - startTime,
+    };
+
+    // Cache successful results
+    if (ttlConfig) {
+      setCache(cacheKey, serviceResult, ttlConfig.ttl);
+    }
+
+    return serviceResult;
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+      durationMs: performance.now() - startTime,
+    };
+  }
 }
 
+/**
+ * Configure cache TTL for a service
+ */
 export function configureCacheTtl(service: string, ttl: number): void {
   cacheConfig.set(service, { ttl });
 }
 
+/**
+ * Invalidate cache entries
+ */
 export function invalidateCache(service?: string): void {
   if (service) {
     for (const key of cache.keys()) {
@@ -124,6 +180,9 @@ export function invalidateCache(service?: string): void {
   }
 }
 
+/**
+ * Get cache statistics
+ */
 export function getCacheStats(): { size: number; services: string[] } {
   const services = new Set<string>();
   for (const key of cache.keys()) {
@@ -133,34 +192,9 @@ export function getCacheStats(): { size: number; services: string[] } {
   return { size: cache.size, services: [...services] };
 }
 
-export async function disposeBackends(): Promise<void> {
-  const disposals = Array.from(backends.values())
-    .filter((b) => b.dispose)
-    .map((b) => b.dispose!());
-  await Promise.all(disposals);
-  backends.clear();
-  cache.clear();
-}
-
-export function createServiceProxy(
-  serviceName: string,
-): Record<string, (...args: unknown[]) => Promise<unknown>> {
-  return new Proxy(
-    {} as Record<string, (...args: unknown[]) => Promise<unknown>>,
-    {
-      get(_, method: string) {
-        if (typeof method !== 'string') return undefined;
-        return async (...args: unknown[]): Promise<unknown> => {
-          const result = await callProcedure(serviceName, method, args);
-          if (!result.success)
-            throw new Error(result.error || 'Service call failed');
-          return result.data;
-        };
-      },
-    },
-  );
-}
-
+/**
+ * Batch call multiple procedures
+ */
 export interface BatchCall {
   service: string;
   procedure: string;
@@ -169,43 +203,11 @@ export interface BatchCall {
 }
 
 export async function batchCall(calls: BatchCall[]): Promise<ServiceResult[]> {
-  const grouped = new Map<string, { indices: number[]; calls: BatchCall[] }>();
-
-  for (let i = 0; i < calls.length; i++) {
-    const call = calls[i]!;
-    if (!grouped.has(call.service))
-      grouped.set(call.service, { indices: [], calls: [] });
-    const group = grouped.get(call.service)!;
-    group.indices.push(i);
-    group.calls.push(call);
-  }
-
-  const results: ServiceResult[] = new Array(calls.length);
-  const promises = Array.from(grouped.entries()).map(async ([, group]) => {
-    const groupResults = await Promise.all(
-      group.calls.map((c) =>
-        callProcedure(c.service, c.procedure, c.args || [], {
-          bypassCache: c.bypassCache,
-        }),
-      ),
-    );
-    for (let i = 0; i < group.indices.length; i++) {
-      results[group.indices[i]!] = groupResults[i]!;
-    }
-  });
-
-  await Promise.all(promises);
-  return results;
-}
-
-export function initializeFromConfig(): void {
-  const config = getPatchworkConfig();
-  const cacheServices = config.cache?.services;
-  if (!cacheServices) return;
-
-  for (const [service, settings] of Object.entries(cacheServices)) {
-    if (settings?.ttl) {
-      configureCacheTtl(service, settings.ttl);
-    }
-  }
+  return Promise.all(
+    calls.map((c) =>
+      callProcedure(c.service, c.procedure, c.args || [], {
+        bypassCache: c.bypassCache,
+      }),
+    ),
+  );
 }

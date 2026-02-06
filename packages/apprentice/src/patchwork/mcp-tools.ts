@@ -1,20 +1,11 @@
-// MCP Tools for Patchwork - Widget generation and management via MCP
-
+import { generateWidget, regenerateWidget } from './generate.js';
 import {
-  generateWidget,
-  regenerateWidget,
   listWidgets,
   searchWidgets,
   getWidget,
   deleteWidget,
-} from './generation/index.js';
-import type { WidgetRuntime } from '@aprovan/patchwork';
-import {
-  generateLayout,
-  getSlotDimensions,
-  type LayoutContext,
-} from './llm-prompt.js';
-import { getPresetNames } from '@aprovan/patchwork';
+  type WidgetRuntime,
+} from '@aprovan/patchwork';
 
 interface McpTool {
   name: string;
@@ -123,39 +114,6 @@ export const patchworkTools: McpTool[] = [
       required: ['name'],
     },
   },
-  {
-    name: 'patchwork_generate_layout',
-    description: 'Generate a widget layout configuration using LLM',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        request: {
-          type: 'string',
-          description: 'Natural language description of desired layout',
-        },
-        cwd: {
-          type: 'string',
-          description: 'Current working directory for context',
-        },
-        gitBranch: {
-          type: 'string',
-          description: 'Current git branch for context',
-        },
-        projectType: {
-          type: 'string',
-          description: 'Project type (node, python, etc)',
-        },
-      },
-    },
-  },
-  {
-    name: 'patchwork_list_presets',
-    description: 'List available layout presets',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
 ];
 
 export async function handlePatchworkTool(
@@ -256,32 +214,6 @@ export async function handlePatchworkTool(
         success: deleted,
         deleted: deleted ? widgetName : undefined,
         error: deleted ? undefined : `Widget '${widgetName}' not found`,
-      };
-    }
-
-    case 'patchwork_generate_layout': {
-      const context: LayoutContext = {
-        cwd: args.cwd as string | undefined,
-        gitBranch: args.gitBranch as string | undefined,
-        projectType: args.projectType as string | undefined,
-      };
-      const request = args.request as string | undefined;
-
-      const result = await generateLayout(context, request);
-      return {
-        success: result.success,
-        layout: result.layout,
-        errors: result.errors.length > 0 ? result.errors : undefined,
-      };
-    }
-
-    case 'patchwork_list_presets': {
-      const presets = getPresetNames();
-      return {
-        presets: presets.map((name) => ({
-          name,
-          slots: [...getSlotDimensions(name).keys()],
-        })),
       };
     }
 

@@ -7,7 +7,7 @@ import {
   getStatus,
   isConfigured,
   CopilotClient,
-} from '@apprentice/copilot-proxy';
+} from '@aprovan/copilot-proxy';
 
 /**
  * Register the providers command with subcommands

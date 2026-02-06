@@ -125,7 +125,7 @@ program
 program
   .command('serve')
   .description('Start the OpenAI-compatible proxy server')
-  .option('-p, --port <port>', 'Port to listen on', '8080')
+  .option('-p, --port <port>', 'Port to listen on', '6433')
   .option('-h, --host <host>', 'Host to bind to', '127.0.0.1')
   .option('-v, --verbose', 'Enable verbose logging', false)
   .action(async (options) => {

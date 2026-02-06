@@ -1,4 +1,4 @@
-# @apprentice/copilot-proxy
+# @aprovan/copilot-proxy
 
 GitHub Copilot OpenAI-compatible proxy.
 
@@ -7,7 +7,7 @@ Use GitHub Copilot as a backend for OpenAI-compatible API calls, either directly
 ## Installation
 
 ```bash
-pnpm add @apprentice/copilot-proxy
+pnpm add @aprovan/copilot-proxy
 ```
 
 ## Quick Start
@@ -26,7 +26,7 @@ This will initiate the GitHub device flow - you'll be given a code to enter at g
 npx copilot-proxy serve
 ```
 
-The server will start on `http://127.0.0.1:8080` by default.
+The server will start on `http://127.0.0.1:6433` by default.
 
 ### 3. Use with OpenAI SDK
 
@@ -34,7 +34,7 @@ The server will start on `http://127.0.0.1:8080` by default.
 import OpenAI from 'openai';
 
 const client = new OpenAI({
-  baseURL: 'http://127.0.0.1:8080/v1',
+  baseURL: 'http://127.0.0.1:6433/v1',
   apiKey: 'not-needed', // Required by SDK but not validated
 });
 
@@ -52,7 +52,7 @@ copilot-proxy disconnect   # Remove stored credentials
 copilot-proxy status       # Check connection status
 copilot-proxy models       # List available models
 copilot-proxy serve        # Start HTTP proxy server
-  --port, -p <port>        # Port (default: 8080)
+  --port, -p <port>        # Port (default: 6433)
   --host, -h <host>        # Host (default: 127.0.0.1)
   --verbose, -v            # Enable verbose logging
 ```
@@ -62,7 +62,7 @@ copilot-proxy serve        # Start HTTP proxy server
 Use the SDK directly without starting an HTTP server:
 
 ```typescript
-import { CopilotClient, connect, isConfigured } from '@apprentice/copilot-proxy';
+import { CopilotClient, connect, isConfigured } from '@aprovan/copilot-proxy';
 
 // Check if authenticated
 if (!await isConfigured()) {
@@ -98,10 +98,10 @@ for await (const chunk of client.createChatCompletionStream({
 Start the proxy server programmatically:
 
 ```typescript
-import { createProxyServer } from '@apprentice/copilot-proxy/server';
+import { createProxyServer } from '@aprovan/copilot-proxy/server';
 
 const server = createProxyServer({
-  port: 8080,
+  port: 6433,
   host: '127.0.0.1',
   verbose: true,
 });
@@ -128,7 +128,7 @@ The HTTP server implements OpenAI-compatible endpoints:
 For advanced use cases, get an OpenAI-compatible transport:
 
 ```typescript
-import { getOpenAICompatibleTransport } from '@apprentice/copilot-proxy';
+import { getOpenAICompatibleTransport } from '@aprovan/copilot-proxy';
 
 const transport = await getOpenAICompatibleTransport();
 

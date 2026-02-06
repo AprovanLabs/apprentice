@@ -3,6 +3,7 @@ node_modules
 pnpm-lock.yaml
 .env
 .cache
+__pycache__
 
 # Turbo
 .turbo

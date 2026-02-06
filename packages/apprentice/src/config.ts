@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir, platform } from 'node:os';
 import { join } from 'node:path';
 import { load } from 'js-yaml';
-import { config as loadDotenv } from 'dotenv';
+import { config as loadDotenv } from './utils/dotenv';
 import lodash from 'lodash';
 
 const { merge, cloneDeepWith } = lodash;

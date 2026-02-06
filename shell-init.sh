@@ -22,6 +22,8 @@ unalias apr 2>/dev/null
 function apr {
   node "$APPRENTICE_BUILD_HOME/dist/cli.js" "$@"
 }
+unalias pw 2>/dev/null
+alias pw='apr patchwork run'
 
 # Add completions to fpath and initialize
 fpath=("$APPRENTICE_HOME/completions" $fpath)

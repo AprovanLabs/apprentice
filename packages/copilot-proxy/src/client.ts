@@ -193,7 +193,7 @@ export class CopilotClient {
 }
 
 /**
- * Create a fetch wrapper with automatic auth (legacy compatibility)
+ * Create a fetch wrapper with automatic auth
  */
 export function createFetch(oauthToken: string): typeof fetch {
   return async (input, init) => {

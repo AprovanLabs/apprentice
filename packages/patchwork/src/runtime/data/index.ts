@@ -1,18 +1,16 @@
-// Data Runtime - Executes data widgets and formats output
+// Data Runtime - Executes data widgets
+//
+// Data widgets are simple async functions that return data.
+// Formatting is handled by the caller, not by this runtime.
 
-import chalk from 'chalk';
-import { marked } from 'marked';
-// @ts-ignore - marked-terminal lacks type declarations
-import { markedTerminal } from 'marked-terminal';
 import type { WidgetMeta, DataExecutionResult, Services } from '../types.js';
 import { loadWidgetSource, stripMeta } from '../loader.js';
-import { createServicesForWidget } from '../globals.js';
+import { injectServiceGlobals } from '../globals.js';
 
 export interface FormatOptions {
   maxLength?: number;
   truncateSuffix?: string;
   jsonIndent?: number;
-  markdownWidth?: number;
 }
 
 const DEFAULT_MAX_LENGTH = 10240;
@@ -27,41 +25,13 @@ function truncateOutput(
   return output.slice(0, maxLength - suffix.length) + suffix;
 }
 
-const JSON_COLORS = {
-  key: chalk.cyan,
-  string: chalk.green,
-  number: chalk.yellow,
-  boolean: chalk.magenta,
-  null: chalk.gray,
-  bracket: chalk.white,
-};
-
-function highlightJson(json: string): string {
-  return json
-    .replace(/"([^"]+)":/g, (_, key) => `${JSON_COLORS.key(`"${key}"`)}:`)
-    .replace(/: "([^"]*)"/g, (_, str) => `: ${JSON_COLORS.string(`"${str}"`)}`)
-    .replace(/: (-?\d+\.?\d*)/g, (_, num) => `: ${JSON_COLORS.number(num)}`)
-    .replace(/: (true|false)/g, (_, bool) => `: ${JSON_COLORS.boolean(bool)}`)
-    .replace(/: null/g, `: ${JSON_COLORS.null('null')}`)
-    .replace(/([{}[\],])/g, (bracket) => JSON_COLORS.bracket(bracket));
-}
-
+/**
+ * Format data as JSON string (no color highlighting - that's a UI concern)
+ */
 export function formatJson(data: unknown, options: FormatOptions = {}): string {
   const indent = options.jsonIndent ?? 2;
   const json = JSON.stringify(data, null, indent);
-  const highlighted = highlightJson(json);
-  return truncateOutput(highlighted, options.maxLength);
-}
-
-export function formatMarkdown(
-  content: string,
-  options: FormatOptions = {},
-): string {
-  marked.use(
-    markedTerminal({ width: options.markdownWidth ?? 80, reflowText: true }),
-  );
-  const rendered = marked(content) as string;
-  return truncateOutput(rendered.trim(), options.maxLength);
+  return truncateOutput(json, options.maxLength);
 }
 
 async function evaluateDataWidget(
@@ -96,17 +66,14 @@ export async function executeDataWidget(
     const source = await loadWidgetSource(widgetPath);
     const cleanSource = stripMeta(source);
 
-    const widgetServices = createServicesForWidget(meta.services);
-    const mergedServices = { ...services, ...widgetServices };
+    // Inject services as flat globals
+    injectServiceGlobals(meta.services);
 
-    const fn = await evaluateDataWidget(cleanSource, mergedServices);
-    const raw = await fn({ ...props, services: mergedServices });
+    const fn = await evaluateDataWidget(cleanSource, services);
+    const raw = await fn({ ...props, services });
 
-    const outputFormat = meta.output || 'json';
-    const formatted =
-      outputFormat === 'markdown'
-        ? formatMarkdown(String(raw), options)
-        : formatJson(raw, options);
+    // Format as JSON - markdown formatting should be done by the caller if needed
+    const formatted = formatJson(raw, options);
 
     return {
       success: true,
@@ -138,11 +105,11 @@ export async function* executeStreamingDataWidget(
     const source = await loadWidgetSource(widgetPath);
     const cleanSource = stripMeta(source);
 
-    const widgetServices = createServicesForWidget(meta.services);
-    const mergedServices = { ...services, ...widgetServices };
+    // Inject services as flat globals
+    injectServiceGlobals(meta.services);
 
-    const fn = await evaluateDataWidget(cleanSource, mergedServices);
-    const result = fn({ ...props, services: mergedServices });
+    const fn = await evaluateDataWidget(cleanSource, services);
+    const result = fn({ ...props, services });
 
     const isAsyncIterable = (v: unknown): v is AsyncIterable<unknown> =>
       v != null &&
@@ -150,11 +117,7 @@ export async function* executeStreamingDataWidget(
 
     if (isAsyncIterable(result)) {
       for await (const chunk of result) {
-        const outputFormat = meta.output || 'json';
-        const formatted =
-          outputFormat === 'markdown'
-            ? formatMarkdown(String(chunk), options)
-            : formatJson(chunk, options);
+        const formatted = formatJson(chunk, options);
 
         yield {
           success: true,
@@ -165,11 +128,7 @@ export async function* executeStreamingDataWidget(
       }
     } else {
       const raw = await result;
-      const outputFormat = meta.output || 'json';
-      const formatted =
-        outputFormat === 'markdown'
-          ? formatMarkdown(String(raw), options)
-          : formatJson(raw, options);
+      const formatted = formatJson(raw, options);
 
       yield {
         success: true,

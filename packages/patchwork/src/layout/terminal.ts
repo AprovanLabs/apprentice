@@ -1,33 +1,80 @@
-// Terminal Layout Manager - Slot-based terminal layout using Ink
+// Terminal Layout Manager - Slot-based terminal layout using image-provided rendering
+//
+// This layout manager is framework-agnostic. The actual rendering is delegated
+// to the terminal image (e.g., @aprovan/patchwork-ink) which provides React/Ink.
 
 import type {
   LayoutManager,
-  LayoutPreset,
   LayoutSpec,
   SlotId,
   SlotBounds,
   SlotDefinition,
   MountedWidget,
-} from './types.js';
-import { PRESETS, getPreset } from './presets.js';
-import { type WidgetInstance } from '../runtime/terminal/index.js';
-import { loadWidget } from '../runtime/loader.js';
-import type { Services } from '../runtime/types.js';
+} from './types';
+import { type WidgetInstance } from '../runtime/terminal/index';
+import { loadWidget } from '../runtime/loader';
+import type { Services } from '../runtime/types';
 
-type InkModule = typeof import('ink');
-type ReactModule = typeof import('react');
-
-let inkModule: InkModule | null = null;
-let reactModule: ReactModule | null = null;
-
-async function getInk(): Promise<InkModule> {
-  if (!inkModule) inkModule = await import('ink');
-  return inkModule;
+/**
+ * Terminal Image interface for layout rendering
+ */
+interface TerminalLayoutImageModule {
+  /** Re-exported React for creating elements */
+  React: {
+    createElement: (
+      type: unknown,
+      props?: Record<string, unknown> | null,
+      ...children: unknown[]
+    ) => unknown;
+  };
+  /** Re-exported Ink Box component */
+  Box: unknown;
+  /** Re-exported Ink Text component */
+  Text: unknown;
+  /** Render function */
+  render: (
+    element: unknown,
+    options?: { exitOnCtrlC?: boolean },
+  ) => {
+    unmount: () => void;
+    waitUntilExit: () => Promise<void>;
+    rerender: (element: unknown) => void;
+  };
 }
 
-async function getReact(): Promise<ReactModule> {
-  if (!reactModule) reactModule = await import('react');
-  return reactModule;
+// Cache for the loaded image
+let layoutImageModule: TerminalLayoutImageModule | null = null;
+
+async function loadLayoutImage(
+  imageName = '@aprovan/patchwork-ink',
+): Promise<TerminalLayoutImageModule> {
+  if (layoutImageModule) return layoutImageModule;
+
+  try {
+    const imageModule = (await import(imageName)) as TerminalLayoutImageModule;
+
+    if (!imageModule.React || !imageModule.render || !imageModule.Box) {
+      throw new Error(
+        `Terminal image '${imageName}' missing required exports: React, render, Box, Text`,
+      );
+    }
+
+    layoutImageModule = imageModule;
+    return imageModule;
+  } catch (err) {
+    throw new Error(
+      `Failed to load terminal image '${imageName}': ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
+}
+
+/**
+ * Clear the cached layout image module
+ */
+export function clearLayoutImageCache(): void {
+  layoutImageModule = null;
 }
 
 function getTerminalSize(): { width: number; height: number } {
@@ -124,7 +171,7 @@ function calculateSlotBounds(
 
 export interface TerminalLayoutManagerOptions {
   services?: Services;
-  preset?: string;
+  slots?: SlotDefinition[];
 }
 
 interface SlotInstance {
@@ -132,17 +179,17 @@ interface SlotInstance {
   instance: WidgetInstance | null;
 }
 
+const DEFAULT_SLOTS: SlotDefinition[] = [
+  { id: 'main', position: 'center', width: 'fill', height: 'fill' },
+  { id: 'status', position: 'bottom', width: 'fill', height: 3 },
+];
+
 export function createTerminalLayoutManager(
   options: TerminalLayoutManagerOptions = {},
 ): LayoutManager {
-  const { preset: initialPreset = 'minimal' } = options;
-  let currentPreset = getPreset(initialPreset) || PRESETS.minimal!;
+  const slotDefs = options.slots ?? DEFAULT_SLOTS;
   let viewport = getTerminalSize();
-  let slots = calculateSlotBounds(
-    currentPreset.slots,
-    viewport.width,
-    viewport.height,
-  );
+  let slots = calculateSlotBounds(slotDefs, viewport.width, viewport.height);
   const mounted = new Map<SlotId, SlotInstance>();
   let resizeHandler: (() => void) | null = null;
 
@@ -161,21 +208,6 @@ export function createTerminalLayoutManager(
   }
 
   const manager: LayoutManager = {
-    getPresets(): LayoutPreset[] {
-      return Object.values(PRESETS);
-    },
-
-    setPreset(name: string): void {
-      const preset = getPreset(name);
-      if (!preset) throw new Error(`Unknown preset: ${name}`);
-      currentPreset = preset;
-      slots = calculateSlotBounds(
-        preset.slots,
-        viewport.width,
-        viewport.height,
-      );
-    },
-
     getSlots(): Map<SlotId, SlotBounds> {
       return new Map(slots);
     },
@@ -226,7 +258,6 @@ export function createTerminalLayoutManager(
     },
 
     async applyLayout(spec: LayoutSpec): Promise<void> {
-      if (spec.preset) this.setPreset(spec.preset);
       this.unmountAll();
 
       for (const assignment of spec.slots) {
@@ -240,7 +271,7 @@ export function createTerminalLayoutManager(
 
     resize(width: number, height: number): void {
       viewport = { width, height };
-      slots = calculateSlotBounds(currentPreset.slots, width, height);
+      slots = calculateSlotBounds(slotDefs, width, height);
     },
 
     destroy(): void {
@@ -255,18 +286,19 @@ export function createTerminalLayoutManager(
 export async function renderLayout(
   manager: LayoutManager,
   _services: Services = {},
+  imageName = '@aprovan/patchwork-ink',
 ): Promise<{ unmount: () => void }> {
-  const ink = await getInk();
-  const React = await getReact();
+  const image = await loadLayoutImage(imageName);
+  const { React, Box, Text, render } = image;
   const slots = manager.getSlots();
 
   const LayoutView = () => {
-    const elements: React.ReactElement[] = [];
+    const elements: unknown[] = [];
 
     for (const [slotId, bounds] of slots) {
       elements.push(
         React.createElement(
-          ink.Box,
+          Box,
           {
             key: slotId,
             width: bounds.width,
@@ -274,15 +306,15 @@ export async function renderLayout(
             borderStyle: 'single',
             borderColor: 'gray',
           },
-          React.createElement(ink.Text, { dimColor: true }, `[${slotId}]`),
+          React.createElement(Text, { dimColor: true }, `[${slotId}]`),
         ),
       );
     }
 
-    return React.createElement(ink.Box, { flexDirection: 'column' }, elements);
+    return React.createElement(Box, { flexDirection: 'column' }, elements);
   };
 
-  const instance = ink.render(React.createElement(LayoutView), {
+  const instance = render(React.createElement(LayoutView), {
     exitOnCtrlC: true,
   });
 

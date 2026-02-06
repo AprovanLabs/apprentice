@@ -1,173 +1,115 @@
-// Service Global Injection - Creates service proxies for widget execution
+// Service Global Injection - Injects services as flat global namespaces
+//
+// Services are injected directly on globalThis, not nested under __PATCHWORK_SERVICES__.
+// Widget code accesses services as: git.branch(), github.repos.get(), etc.
 
-import type { Services, ServiceProxy, ServiceDependency } from './types.js';
+import type { ServiceDependency, ServiceProxy } from './types.js';
+import { callProcedure } from '../services/proxy.js';
 
-export type ServiceBackend = Record<
+/**
+ * Registry of service backends (for local/testing use)
+ */
+export type LocalServiceBackend = Record<
   string,
   (...args: unknown[]) => Promise<unknown>
 >;
-export type ServiceRegistry = Record<string, ServiceBackend>;
+export type ServiceRegistry = Record<string, LocalServiceBackend>;
 
 const globalRegistry: ServiceRegistry = {};
 
-export function registerService(name: string, backend: ServiceBackend): void {
+/**
+ * Register a local service backend (for testing/mocking)
+ */
+export function registerService(
+  name: string,
+  backend: LocalServiceBackend,
+): void {
   globalRegistry[name] = backend;
 }
 
+/**
+ * Unregister a service
+ */
 export function unregisterService(name: string): void {
   delete globalRegistry[name];
 }
 
-export function getRegisteredServices(): string[] {
-  return Object.keys(globalRegistry);
-}
+/**
+ * Creates a proxy that enables fluent method chaining for dynamic field access.
+ *
+ * Allows arbitrary nested property access that resolves to a callable function,
+ * e.g., `proxy.foo()`, `proxy.foo.bar()`, `proxy.bar.baz()`.
+ */
+export function createFieldAccessProxy<T = unknown>(
+  namespace: string,
+  handler: (
+    namespace: string,
+    methodPath: string,
+    ...args: T[]
+  ) => Promise<unknown>,
+): Record<string, (...args: T[]) => Promise<unknown>> {
+  function createNestedProxy(path: string): (...args: T[]) => Promise<unknown> {
+    const fn = (...args: T[]) => handler(namespace, path, ...args);
 
-function createServiceProxy(
-  serviceName: string,
-  procedures: string[],
-  registry: ServiceRegistry,
-  strict = false,
-): ServiceProxy {
-  const backend = registry[serviceName];
-
-  return new Proxy({} as ServiceProxy, {
-    get(_, method: string) {
-      if (typeof method !== 'string') return undefined;
-
-      return async (...args: unknown[]): Promise<unknown> => {
-        if (!backend) {
-          throw new Error(`Service '${serviceName}' not registered`);
-        }
-
-        if (strict && !procedures.includes(method)) {
-          throw new Error(
-            `Procedure '${method}' not declared for service '${serviceName}'. ` +
-              `Declared: ${procedures.join(', ')}`,
-          );
-        }
-
-        const fn = backend[method];
-        if (typeof fn !== 'function') {
-          throw new Error(`Procedure '${serviceName}.${method}' not found`);
-        }
-
-        return fn(...args);
-      };
-    },
-  });
-}
-
-export function createServicesForWidget(
-  dependencies: ServiceDependency[],
-  registry: ServiceRegistry = globalRegistry,
-  strict = false,
-): Services {
-  const services: Services = {};
-
-  for (const dep of dependencies) {
-    services[dep.name] = createServiceProxy(
-      dep.name,
-      dep.procedures,
-      registry,
-      strict,
-    );
+    return new Proxy(fn, {
+      get(_, nestedName: string) {
+        if (typeof nestedName === 'symbol') return undefined;
+        const newPath = path ? `${path}.${nestedName}` : nestedName;
+        return createNestedProxy(newPath);
+      },
+    }) as (...args: T[]) => Promise<unknown>;
   }
 
-  return services;
+  return new Proxy(
+    {},
+    {
+      get(_, fieldName: string) {
+        if (typeof fieldName === 'symbol') return undefined;
+        return createNestedProxy(fieldName);
+      },
+    },
+  );
 }
 
-export function generateServiceGlobalsCode(
-  dependencies: ServiceDependency[],
-): string {
-  if (dependencies.length === 0) return '';
-
-  const serviceNames = dependencies.map((d) => d.name);
-  return `const { ${serviceNames.join(
-    ', ',
-  )} } = globalThis.__PATCHWORK_SERVICES__ || {};`;
-}
-
-export function generateBrowserServiceBridge(
-  dependencies: ServiceDependency[],
-): string {
-  if (dependencies.length === 0) return '';
-
-  const services = dependencies.map((dep) => {
-    const methods = dep.procedures
-      .map(
-        (proc) => `
-      ${proc}: (...args) => new Promise((resolve, reject) => {
-        const id = Math.random().toString(36).slice(2);
-        const handler = (e) => {
-          if (e.data?.type === 'service-response' && e.data?.id === id) {
-            window.removeEventListener('message', handler);
-            if (e.data.error) reject(new Error(e.data.error));
-            else resolve(e.data.result);
-          }
-        };
-        window.addEventListener('message', handler);
-        window.parent.postMessage({ type: 'service-call', id, service: '${dep.name}', method: '${proc}', args }, '*');
-      })`,
-      )
-      .join(',');
-
-    return `  ${dep.name}: {${methods}\n  }`;
-  });
-
-  return `window.__PATCHWORK_SERVICES__ = {\n${services.join(',\n')}\n};`;
-}
-
-export interface ServiceCallMessage {
-  type: 'service-call';
-  id: string;
-  service: string;
-  method: string;
-  args: unknown[];
-}
-
-export interface ServiceResponseMessage {
-  type: 'service-response';
-  id: string;
-  result?: unknown;
-  error?: string;
-}
-
-export function createMessageHandler(
-  services: Services,
-  postResponse: (msg: ServiceResponseMessage) => void,
-): (msg: ServiceCallMessage) => Promise<void> {
-  return async (msg) => {
-    if (msg.type !== 'service-call') return;
-
-    try {
-      const service = services[msg.service];
-      if (!service) {
-        postResponse({
-          type: 'service-response',
-          id: msg.id,
-          error: `Service '${msg.service}' not available`,
-        });
-        return;
+/**
+ * Create a service proxy for a namespace
+ *
+ * Checks local registry first (for mocks), then falls back to callProcedure.
+ */
+function createServiceNamespaceProxy(serviceName: string): ServiceProxy {
+  return createFieldAccessProxy(serviceName, async (ns, method, ...args) => {
+    // Check local registry first (for mocks/testing)
+    const localBackend = globalRegistry[ns];
+    if (localBackend) {
+      const fn = localBackend[method];
+      if (typeof fn === 'function') {
+        return fn(...args);
       }
-
-      const method = service[msg.method];
-      if (typeof method !== 'function') {
-        postResponse({
-          type: 'service-response',
-          id: msg.id,
-          error: `Method '${msg.method}' not found`,
-        });
-        return;
-      }
-
-      const result = await method(...msg.args);
-      postResponse({ type: 'service-response', id: msg.id, result });
-    } catch (err) {
-      postResponse({
-        type: 'service-response',
-        id: msg.id,
-        error: err instanceof Error ? err.message : String(err),
-      });
     }
-  };
+
+    const result = await callProcedure(ns, method, args);
+    if (!result.success) {
+      throw new Error(result.error || 'Service call failed');
+    }
+    return result.data;
+  }) as ServiceProxy;
+}
+
+/**
+ * Inject services as flat globals on globalThis
+ */
+export function injectServiceGlobals(dependencies: ServiceDependency[]): void {
+  for (const dep of dependencies) {
+    const proxy = createServiceNamespaceProxy(dep.name);
+    (globalThis as Record<string, unknown>)[dep.name] = proxy;
+  }
+}
+
+/**
+ * Remove injected service globals
+ */
+export function removeServiceGlobals(dependencies: ServiceDependency[]): void {
+  for (const dep of dependencies) {
+    delete (globalThis as Record<string, unknown>)[dep.name];
+  }
 }

@@ -1,6 +1,6 @@
 // Layout Types - Types for slot-based layout system
 
-import type { WidgetMeta } from '../runtime/types.js';
+import type { WidgetMeta } from '../runtime/types';
 
 export type SlotPosition = 'top' | 'bottom' | 'left' | 'right' | 'center';
 export type SlotId = string;
@@ -23,12 +23,6 @@ export interface SlotBounds {
   height: number;
 }
 
-export interface LayoutPreset {
-  name: string;
-  description?: string;
-  slots: SlotDefinition[];
-}
-
 export interface MountedWidget {
   slotId: SlotId;
   widgetPath: string;
@@ -37,7 +31,6 @@ export interface MountedWidget {
 }
 
 export interface LayoutState {
-  preset: string;
   slots: Map<SlotId, SlotBounds>;
   mounted: Map<SlotId, MountedWidget>;
   viewport: { width: number; height: number };
@@ -50,13 +43,10 @@ export interface LayoutAssignment {
 }
 
 export interface LayoutSpec {
-  preset?: string;
   slots: LayoutAssignment[];
 }
 
 export interface LayoutManager {
-  getPresets(): LayoutPreset[];
-  setPreset(name: string): void;
   getSlots(): Map<SlotId, SlotBounds>;
   mount(
     slotId: SlotId,

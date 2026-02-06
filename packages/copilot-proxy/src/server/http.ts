@@ -15,7 +15,7 @@ import type {
 } from '../types.js';
 
 export interface ServerOptions {
-  /** Port to listen on (default: 8080) */
+  /** Port to listen on (default: 6433) */
   port?: number;
   /** Host to bind to (default: '127.0.0.1') */
   host?: string;
@@ -41,7 +41,7 @@ export interface ProxyServer {
  */
 export function createProxyServer(options: ServerOptions = {}): ProxyServer {
   const {
-    port = 8080,
+    port = 6433,
     host = '127.0.0.1',
     oauthToken,
     verbose = false,

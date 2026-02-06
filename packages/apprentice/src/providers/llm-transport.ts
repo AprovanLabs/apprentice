@@ -4,7 +4,7 @@ import {
   getOAuthToken,
   isConfigured as isCopilotConfigured,
   COPILOT_API_BASE,
-} from '@apprentice/copilot-proxy';
+} from '@aprovan/copilot-proxy';
 
 export interface OpenAICompatibleTransport {
   baseURL: string;

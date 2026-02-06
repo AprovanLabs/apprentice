@@ -10,4 +10,4 @@ export {
   type StoreValue,
   type StoreSubscriber,
   type StoreSnapshot,
-} from './store.js';
+} from './store';

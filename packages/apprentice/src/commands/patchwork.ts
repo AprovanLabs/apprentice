@@ -9,19 +9,18 @@ import { exec } from 'node:child_process';
 import {
   getContextManager,
   executeWidget,
-  getPresetNames,
   getStore,
+  getPatchworkConfig,
   type WidgetRuntime,
   type BrowserExecutionResult,
+  type WidgetInfo,
 } from '@aprovan/patchwork';
 import {
   listWidgets,
   getWidget,
   deleteWidget,
   generateWidget,
-  getPatchworkConfig,
-  type WidgetInfo,
-} from '../patchwork';
+} from '../patchwork/index.js';
 
 function formatWidgetTable(widgets: WidgetInfo[]): string {
   if (widgets.length === 0) {
@@ -293,16 +292,6 @@ export function createPatchworkCommand(): Command {
         );
         process.exit(1);
       }
-    });
-
-  patchwork
-    .command('presets')
-    .description('List available layout presets')
-    .action(() => {
-      const presets = getPresetNames();
-      console.log(chalk.bold('\nLayout Presets\n'));
-      presets.forEach((p) => console.log(`  - ${p}`));
-      console.log('');
     });
 
   patchwork

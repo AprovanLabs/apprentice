@@ -4,6 +4,7 @@ export * from './types.js';
 export * from './loader.js';
 export * from './globals.js';
 export * from './config.js';
+export * from './compiler.js';
 
 export * as browser from './browser/index.js';
 export * as terminal from './terminal/index.js';
@@ -11,7 +12,7 @@ export * as data from './data/index.js';
 
 import type { Services, ExecutionResult } from './types.js';
 import { loadWidget } from './loader.js';
-import { createServicesForWidget } from './globals.js';
+import { injectServiceGlobals } from './globals.js';
 import { executeBrowserWidget } from './browser/index.js';
 import { executeTerminalWidget } from './terminal/index.js';
 import { executeDataWidget } from './data/index.js';
@@ -32,25 +33,20 @@ export async function executeWidget(
   }
 
   const { widget } = result;
-  const widgetServices = createServicesForWidget(widget.meta.services);
-  const mergedServices = { ...services, ...widgetServices };
+  // Inject services as flat globals
+  injectServiceGlobals(widget.meta.services);
 
   switch (widget.meta.runtime) {
     case 'browser':
-      return executeBrowserWidget(widgetPath, widget.meta, mergedServices, {
+      return executeBrowserWidget(widgetPath, widget.meta, {
         props,
       });
 
     case 'terminal':
-      return executeTerminalWidget(
-        widgetPath,
-        widget.meta,
-        mergedServices,
-        props,
-      );
+      return executeTerminalWidget(widgetPath, widget.meta, services, props);
 
     case 'data':
-      return executeDataWidget(widgetPath, widget.meta, mergedServices, props);
+      return executeDataWidget(widgetPath, widget.meta, services, props);
 
     default:
       return {

@@ -5,8 +5,8 @@ import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, extname, relative } from 'node:path';
 import { EventEmitter } from 'node:events';
-import { getPatchworkConfig } from '../runtime/config.js';
-import { generateContentHash } from '../runtime/loader.js';
+import { getPatchworkConfig } from '../runtime/config';
+import { generateContentHash } from '../runtime/loader';
 
 export interface HotReloadOptions {
   widgetsDir?: string;

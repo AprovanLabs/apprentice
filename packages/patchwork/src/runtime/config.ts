@@ -3,11 +3,12 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import type { ServiceConfig, CacheConfig } from '../services/types.js';
+import type { CacheConfig } from '../services/types.js';
 
 export interface PatchworkConfig {
+  /** Directory for widget cache and artifacts */
   widgetsDir: string;
-  services: Record<string, ServiceConfig>;
+  /** Cache configuration */
   cache: {
     enabled: boolean;
     maxAge?: number;
@@ -22,7 +23,6 @@ let cachedConfig: PatchworkConfig | null = null;
 export function setPatchworkConfig(config: Partial<PatchworkConfig>): void {
   cachedConfig = {
     widgetsDir: config.widgetsDir || DEFAULT_WIDGETS_DIR,
-    services: config.services || {},
     cache: {
       enabled: config.cache?.enabled !== false,
       maxAge: config.cache?.maxAge,
@@ -37,7 +37,6 @@ export function getPatchworkConfig(): PatchworkConfig {
   // Default config
   cachedConfig = {
     widgetsDir: DEFAULT_WIDGETS_DIR,
-    services: {},
     cache: {
       enabled: true,
     },

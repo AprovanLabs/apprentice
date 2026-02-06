@@ -117,7 +117,7 @@ async function indexLogFile(
 }
 
 /**
- * Index new commands from the bash log file (legacy wrapper)
+ * Index new commands from the bash log file
  */
 async function indexCommands(): Promise<number> {
   return indexLogFile(paths.logFile, 'bash');

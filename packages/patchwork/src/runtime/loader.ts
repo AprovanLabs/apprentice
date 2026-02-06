@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { extname } from 'node:path';
 import { createHash } from 'node:crypto';
-import type { WidgetMeta, LoadedWidget, WidgetRuntime } from './types.js';
+import type { WidgetMeta, LoadedWidget, WidgetRuntime } from './types';
 
 const metaCache = new Map<string, { hash: string; meta: WidgetMeta }>();
 

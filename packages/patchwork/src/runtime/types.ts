@@ -23,6 +23,8 @@ export interface WidgetMeta {
   output?: DataOutputFormat;
   packages: Record<string, string>;
   services: ServiceDependency[];
+  /** Image package for rendering (e.g., '@aprovan/patchwork-ink', '@aprovan/patchwork-shadcn') */
+  image?: string;
 }
 
 export interface LoadedWidget {

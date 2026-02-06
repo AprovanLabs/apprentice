@@ -1,13 +1,17 @@
-// Browser Runtime - Compiles and renders React widgets in iframe sandbox
+// Browser Runtime - Compiles and renders widgets in iframe sandbox
+//
+// This runtime is framework-agnostic. Images provide:
+// - Framework dependencies (react, vue, etc.)
+// - HTML generation and mounting code
+// - CSS theming
 
 import * as esbuild from 'esbuild';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import type { WidgetMeta, BrowserExecutionResult, Services } from '../types.js';
+import type { WidgetMeta, BrowserExecutionResult } from '../types.js';
 import { loadWidgetSource, stripMeta } from '../loader.js';
-import { generateBrowserServiceBridge } from '../globals.js';
 import { getPatchworkConfig } from '../config.js';
 
 export interface CompilationResult {
@@ -18,9 +22,75 @@ export interface CompilationResult {
   errors?: string[];
 }
 
-type Dependencies = Record<string, string>;
+export type Dependencies = Record<string, string>;
 
 const DEFAULT_CDN = 'https://esm.sh';
+
+/**
+ * Image interface - what images must provide
+ */
+export interface ImageModule {
+  /** Generate complete HTML for rendering a widget */
+  generateHtml: (
+    compiledJs: string,
+    importMap: Record<string, string>,
+    options: {
+      title?: string;
+      theme?: 'light' | 'dark';
+      customCss?: string;
+      props?: Record<string, unknown>;
+      services?: string[];
+    },
+  ) => string;
+
+  /** Get default import map entries */
+  getDefaultImportMap: (cdn?: string) => Record<string, string>;
+
+  /** Get framework dependencies */
+  getFrameworkDependencies: () => Dependencies;
+}
+
+// Cache for loaded image modules
+const imageCache = new Map<string, ImageModule>();
+
+/**
+ * Load an image module dynamically
+ */
+export async function loadImage(imageName: string): Promise<ImageModule> {
+  const cached = imageCache.get(imageName);
+  if (cached) return cached;
+
+  try {
+    // Try to import the image package
+    const imageModule = (await import(imageName)) as ImageModule;
+
+    if (
+      !imageModule.generateHtml ||
+      !imageModule.getDefaultImportMap ||
+      !imageModule.getFrameworkDependencies
+    ) {
+      throw new Error(
+        `Image '${imageName}' missing required exports: generateHtml, getDefaultImportMap, getFrameworkDependencies`,
+      );
+    }
+
+    imageCache.set(imageName, imageModule);
+    return imageModule;
+  } catch (err) {
+    throw new Error(
+      `Failed to load image '${imageName}': ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
+}
+
+/**
+ * Clear the image cache
+ */
+export function clearImageCache(): void {
+  imageCache.clear();
+}
 
 function normalizeVersion(version: string): string {
   if (version === 'latest' || version === '*') return '';
@@ -39,49 +109,40 @@ function getCdnUrl(pkg: string, version: string, cdn: string): string {
   return `${cdn}/${pkg}${normalized ? `@${normalized}` : ''}`;
 }
 
-function transformImports(
-  code: string,
-  deps: Dependencies,
-  cdn: string,
-): string {
-  let result = code;
-  const sorted = Object.entries(deps).sort(([a], [b]) => b.length - a.length);
-
-  for (const [pkg, version] of sorted) {
-    const url = getCdnUrl(pkg, version, cdn);
-    const escaped = pkg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    result = result
-      .replace(
-        new RegExp(`from\\s+["']${escaped}/([^"']+)["']`, 'g'),
-        `from "${url}/$1"`,
-      )
-      .replace(new RegExp(`from\\s+["']${escaped}["']`, 'g'), `from "${url}"`);
-  }
-
-  return result;
-}
-
 function generateContentHash(source: string): string {
   return createHash('sha256').update(source).digest('hex').slice(0, 16);
 }
 
+export interface CompileOptions {
+  /** Additional package dependencies */
+  packages?: Dependencies;
+  /** Cache directory */
+  cacheDir?: string;
+  /** CDN URL base */
+  cdn?: string;
+  /** esbuild options from image */
+  esbuildOptions?: {
+    jsx?: 'automatic' | 'transform';
+    jsxImportSource?: string;
+    target?: string;
+  };
+}
+
+/**
+ * Compile widget source to JavaScript
+ */
 export async function compileWidget(
   source: string,
-  packages: Dependencies = {},
-  cacheDir?: string,
+  options: CompileOptions = {},
 ): Promise<CompilationResult> {
   const startTime = performance.now();
   const hash = generateContentHash(source);
-  const cdn = DEFAULT_CDN;
+  const cdn = options.cdn ?? DEFAULT_CDN;
+  const packages = options.packages ?? {};
 
-  const deps: Dependencies = {
-    react: '^18.0.0',
-    'react-dom': '^18.0.0',
-    ...packages,
-  };
-
-  if (cacheDir) {
-    const cachedPath = join(cacheDir, `${hash}.js`);
+  // Check cache
+  if (options.cacheDir) {
+    const cachedPath = join(options.cacheDir, `${hash}.js`);
     if (existsSync(cachedPath)) {
       const cached = await readFile(cachedPath, 'utf-8');
       return {
@@ -94,21 +155,49 @@ export async function compileWidget(
   }
 
   try {
-    const reactUrl = getCdnUrl('react', deps['react']!, cdn);
+    // Get jsxImportSource from esbuild options or default to react
+    const jsxImportSource = options.esbuildOptions?.jsxImportSource ?? 'react';
+    const jsxImportSourceUrl = packages[jsxImportSource]
+      ? getCdnUrl(jsxImportSource, packages[jsxImportSource]!, cdn)
+      : `${cdn}/${jsxImportSource}`;
+
     const result = await esbuild.transform(source, {
       loader: 'tsx',
       format: 'esm',
-      target: 'es2020',
-      jsx: 'automatic',
-      jsxImportSource: reactUrl,
+      target: options.esbuildOptions?.target ?? 'es2020',
+      jsx: options.esbuildOptions?.jsx ?? 'automatic',
+      jsxImportSource: jsxImportSourceUrl,
       minify: false,
     });
 
-    const transformed = transformImports(result.code, deps, cdn);
+    // Transform imports to use CDN URLs
+    let transformed = result.code;
+    const sorted = Object.entries(packages).sort(
+      ([a], [b]) => b.length - a.length,
+    );
 
-    if (cacheDir) {
-      await mkdir(cacheDir, { recursive: true });
-      await writeFile(join(cacheDir, `${hash}.js`), transformed, 'utf-8');
+    for (const [pkg, version] of sorted) {
+      const url = getCdnUrl(pkg, version, cdn);
+      const escaped = pkg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      transformed = transformed
+        .replace(
+          new RegExp(`from\\s+["']${escaped}/([^"']+)["']`, 'g'),
+          `from "${url}/$1"`,
+        )
+        .replace(
+          new RegExp(`from\\s+["']${escaped}["']`, 'g'),
+          `from "${url}"`,
+        );
+    }
+
+    // Cache result
+    if (options.cacheDir) {
+      await mkdir(options.cacheDir, { recursive: true });
+      await writeFile(
+        join(options.cacheDir, `${hash}.js`),
+        transformed,
+        'utf-8',
+      );
     }
 
     return {
@@ -129,169 +218,82 @@ export async function compileWidget(
   }
 }
 
-const CSS_PRESETS = {
-  light: `
-:root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --primary: 222.2 47.4% 11.2%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 222.2 84% 4.9%;
-  --radius: 0.5rem;
-}
-body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); }
-`,
-  dark: `
-:root {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --primary: 210 40% 98%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 212.7 26.8% 83.9%;
-  --radius: 0.5rem;
-}
-body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); }
-`,
-};
-
 export interface RenderOptions {
+  /** Widget title */
   title?: string;
+  /** Theme */
   theme?: 'light' | 'dark';
+  /** Custom CSS */
   customCss?: string;
+  /** Widget props */
   props?: Record<string, unknown>;
+  /** Additional packages */
   packages?: Dependencies;
+  /** Image to use (default: @aprovan/patchwork-shadcn) */
+  image?: string;
 }
 
-function extractDefaultExport(code: string): string {
-  let result = code;
-
-  const namedMatch = result.match(/export\s*{\s*(\w+)\s+as\s+default\s*}/);
-  if (namedMatch) {
-    result = result.replace(
-      /export\s*{\s*\w+\s+as\s+default\s*};?/,
-      `window.__WIDGET__ = ${namedMatch[1]};`,
-    );
-  }
-
-  const directMatch = result.match(/export\s+default\s+(?:function\s+)?(\w+)/);
-  if (directMatch && !namedMatch) {
-    result = result.replace(
-      /export\s+default\s+(?:function\s+)?(\w+)/,
-      `window.__WIDGET__ = $1`,
-    );
-  }
-
-  return result.replace(/export\s*{[^}]*};?/g, '');
-}
-
-function generateImportMap(deps: Dependencies): string {
+/**
+ * Generate import map from dependencies
+ */
+export function generateImportMap(
+  deps: Dependencies,
+  cdn = DEFAULT_CDN,
+): Record<string, string> {
   const imports: Record<string, string> = {};
   for (const [pkg, version] of Object.entries(deps)) {
-    const url = getCdnUrl(pkg, version, DEFAULT_CDN);
+    const url = getCdnUrl(pkg, version, cdn);
     imports[pkg] = url;
     imports[`${pkg}/`] = `${url}/`;
   }
-  return JSON.stringify({ imports }, null, 2);
+  return imports;
 }
 
-export function renderWidgetHtml(
+/**
+ * Render widget to HTML using the specified image
+ */
+export async function renderWidgetHtml(
   compiledJs: string,
   meta: WidgetMeta,
-  services: Services,
   options: RenderOptions = {},
-): string {
-  const {
-    title = meta.name,
-    theme = 'dark',
-    customCss = '',
-    props = {},
-  } = options;
-  const deps = {
-    react: '^18.0.0',
-    'react-dom': '^18.0.0',
+): Promise<string> {
+  const imageName = options.image ?? '@aprovan/patchwork-shadcn';
+  const image = await loadImage(imageName);
+
+  // Get framework dependencies from image
+  const frameworkDeps = image.getFrameworkDependencies();
+
+  // Merge all dependencies
+  const deps: Dependencies = {
+    ...frameworkDeps,
     ...meta.packages,
     ...options.packages,
   };
 
-  const serviceBridge = generateBrowserServiceBridge(meta.services);
-  const widgetCode = extractDefaultExport(compiledJs);
-  const importMap = generateImportMap(deps);
-  const presetCss = CSS_PRESETS[theme];
-  const propsJson = JSON.stringify(props);
+  // Generate import map (image provides base, we add widget deps)
+  const baseImportMap = image.getDefaultImportMap(DEFAULT_CDN);
+  const widgetImportMap = generateImportMap(deps, DEFAULT_CDN);
+  const importMap = { ...baseImportMap, ...widgetImportMap };
 
-  return `<!DOCTYPE html>
-<html lang="en" class="${theme}">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script type="importmap">${importMap}</script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, sans-serif; }
-    ${presetCss}
-    ${customCss}
-  </style>
-</head>
-<body>
-  <div id="root"></div>
-  <script>
-    ${serviceBridge}
-    window.__WIDGET_PROPS__ = ${propsJson};
-  </script>
-  <script type="module">
-    import { createRoot } from "react-dom/client";
-    import React from "react";
+  // Extract service namespaces
+  const services = meta.services.map((s) => s.name);
 
-    ${widgetCode}
-
-    const Component = window.__WIDGET__;
-    const root = createRoot(document.getElementById('root'));
-
-    if (Component) {
-      root.render(React.createElement(Component, window.__WIDGET_PROPS__));
-      window.parent.postMessage({ type: 'ready' }, '*');
-    } else {
-      root.render(React.createElement('div', { style: { color: 'red', padding: '20px' } },
-        React.createElement('h2', null, 'Error: No component found'),
-        React.createElement('p', null, 'Make sure your widget has a default export.')
-      ));
-      window.parent.postMessage({ type: 'error', message: 'No component found' }, '*');
-    }
-
-    window.addEventListener('error', (e) => {
-      window.parent.postMessage({ type: 'error', message: e.message }, '*');
-    });
-  </script>
-</body>
-</html>`;
+  // Delegate HTML generation to image
+  return image.generateHtml(compiledJs, importMap, {
+    title: options.title ?? meta.name,
+    theme: options.theme ?? 'dark',
+    customCss: options.customCss,
+    props: options.props,
+    services,
+  });
 }
 
+/**
+ * Execute a browser widget - compile and render to HTML
+ */
 export async function executeBrowserWidget(
   widgetPath: string,
   meta: WidgetMeta,
-  services: Services,
   options: RenderOptions = {},
 ): Promise<BrowserExecutionResult> {
   const startTime = performance.now();
@@ -302,7 +304,29 @@ export async function executeBrowserWidget(
     const config = getPatchworkConfig();
     const cacheDir = join(config.widgetsDir, '.cache');
 
-    const compiled = await compileWidget(cleanSource, meta.packages, cacheDir);
+    // Load image to get esbuild config
+    const imageName = options.image ?? '@aprovan/patchwork-shadcn';
+    let esbuildOptions: CompileOptions['esbuildOptions'];
+
+    try {
+      // Try to read patchwork config from image package.json
+      const imagePackageJson = await import(`${imageName}/package.json`, {
+        with: { type: 'json' },
+      });
+      esbuildOptions = imagePackageJson.default?.patchwork?.esbuild;
+    } catch {
+      // Image might not have patchwork config, use defaults
+    }
+
+    // Get framework deps for compilation
+    const image = await loadImage(imageName);
+    const frameworkDeps = image.getFrameworkDependencies();
+
+    const compiled = await compileWidget(cleanSource, {
+      packages: { ...frameworkDeps, ...meta.packages, ...options.packages },
+      cacheDir,
+      esbuildOptions,
+    });
 
     if (compiled.errors?.length) {
       return {
@@ -313,7 +337,7 @@ export async function executeBrowserWidget(
       };
     }
 
-    const html = renderWidgetHtml(compiled.code, meta, services, options);
+    const html = await renderWidgetHtml(compiled.code, meta, options);
 
     return {
       success: true,

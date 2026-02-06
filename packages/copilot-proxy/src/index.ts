@@ -5,7 +5,7 @@
  *
  * @example
  * ```typescript
- * import { CopilotClient, connect } from '@apprentice/copilot-proxy';
+ * import { CopilotClient, connect } from '@aprovan/copilot-proxy';
  *
  * // First time: authenticate
  * const { userCode, verificationUrl, waitForAuth } = await connect();

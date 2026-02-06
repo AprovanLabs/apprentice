@@ -1,5 +1,5 @@
 {
-  "name": "@apprentice/copilot-proxy",
+  "name": "@aprovan/copilot-proxy",
   "version": "0.1.0",
   "description": "GitHub Copilot OpenAI-compatible proxy",
   "type": "module",
