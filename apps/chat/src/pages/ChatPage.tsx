@@ -1,6 +1,6 @@
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import { useState, useRef, useEffect, useMemo, createContext, useContext } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback, createContext, useContext } from 'react';
 import {
   Send,
   Loader2,
@@ -10,7 +10,6 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +25,7 @@ import type { UIMessage } from 'ai';
 import { createCompiler, type Compiler } from '@aprovan/patchwork-compiler';
 import { extractJsxBlocks } from '@/lib/jsx-extractor';
 import { JsxPreview } from '@/components/JsxPreview';
+import { MarkdownEditor } from '@/components/MarkdownEditor';
 
 const APROVAN_LOGO =
   'https://raw.githubusercontent.com/AprovanLabs/aprovan.com/main/docs/assets/social-labs.png';
@@ -37,7 +37,11 @@ function TextPart({ text, isUser }: { text: string; isUser: boolean }) {
   const compiler = useCompiler();
 
   if (isUser) {
-    return <span className="whitespace-pre-wrap">{text}</span>;
+    return (
+      <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-pre:my-2 prose-code:before:content-none prose-code:after:content-none">
+        <Markdown remarkPlugins={[remarkGfm]}>{text}</Markdown>
+      </div>
+    );
   }
 
   const parts = extractJsxBlocks(text);
@@ -221,7 +225,6 @@ function MessageBubble({ message }: { message: UIMessage }) {
               );
             }
 
-            // Handle tool parts (tool-${name} types and dynamic-tool)
             if (part.type.startsWith('tool-') || part.type === 'dynamic-tool') {
               const toolPart = part as {
                 type: string;
@@ -262,7 +265,6 @@ function MessageBubble({ message }: { message: UIMessage }) {
 
 const PROXY_URL = '/api/proxy';
 const IMAGE_SPEC = '@aprovan/patchwork-shadcn';
-// Use local packages in development, esm.sh in production
 const CDN_BASE_URL = import.meta.env.DEV ? '/_local-packages' : 'https://esm.sh';
 
 export default function ChatPage() {
@@ -281,7 +283,7 @@ export default function ChatPage() {
       new DefaultChatTransport({
         body: () => ({
           metadata: {
-            patchwork: { compilers: [IMAGE_SPEC] }
+            patchwork: { compilers: [IMAGE_SPEC] },
           },
         }),
       }),
@@ -292,12 +294,12 @@ export default function ChatPage() {
 
   const isLoading = status === 'submitted' || status === 'streaming';
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = useCallback((e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!input.trim()) return;
     sendMessage({ text: input });
     setInput('');
-  };
+  }, [input, sendMessage]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -318,12 +320,12 @@ export default function ChatPage() {
                 className="h-8 w-8 rounded-full"
               />
               <span className="text-lg">Chat</span>
-              <Badge
+              {status !== 'streaming' && <Badge
                 variant="secondary"
                 className="ml-auto"
               >
                 {status}
-              </Badge>
+              </Badge>}
             </CardTitle>
           </CardHeader>
 
@@ -384,18 +386,23 @@ export default function ChatPage() {
           <div className="p-4 border-t">
             <form
               onSubmit={handleSubmit}
-              className="flex gap-2"
+              className="flex gap-2 items-end"
             >
-              <Input
+              <MarkdownEditor
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="What's the weather in Paris, France like??"
+                onChange={setInput}
+                onSubmit={() => {
+                  if (!isLoading && input.trim()) {
+                    handleSubmit();
+                  }
+                }}
+                placeholder="Type a message... (Shift+Enter for new line)"
                 disabled={isLoading}
-                className="flex-1"
               />
               <Button
                 type="submit"
                 disabled={isLoading || !input.trim()}
+                className="shrink-0"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

@@ -30,6 +30,9 @@ Respond as simple text, encoding a single JSX file that would correctly compile,
 ### Requirements
 - DO think heavily about correctness of code and syntax
 - DO keep things simple and self-contained
+- ALWAYS output the COMPLETE code block with opening \`\`\`tsx and closing \`\`\` markers
+- NEVER truncate or cut off code - finish the entire component before stopping
+- If the component is complex, simplify it rather than leaving it incomplete
 
 ### Visual Design Guidelines
 Create professional, polished interfaces that present information **spatially** rather than as vertical lists:
@@ -41,14 +44,56 @@ Create professional, polished interfaces that present information **spatially** 
 - Group related metrics into **compact visual clusters** rather than separate line items
 - Use **subtle backgrounds, borders, and shadows** to define sections without heavy dividers
 
+### Root Element Constraints
+The component will be rendered inside a parent container that handles positioning. Your root element should:
+- ✅ Use intrinsic sizing (let content determine dimensions)
+- ✅ Handle internal padding (e.g., \`p-4\`, \`p-6\`)
+- ❌ NEVER add centering utilities (\`items-center\`, \`justify-center\`) to position itself
+- ❌ NEVER add viewport-relative sizing (\`min-h-screen\`, \`h-screen\`, \`w-screen\`)
+- ❌ NEVER add flex/grid on root just for self-centering
+
 ### Anti-patterns to Avoid
 - ❌ Bulleted or numbered lists of key-value pairs
 - ❌ Vertical stacks where horizontal layouts would fit
 - ❌ Plain text labels without visual treatment
 - ❌ Uniform styling that doesn't distinguish primary from secondary information
+- ❌ Wrapping components in centering containers (parent handles this)
 `;
 
-// What's the weather in Paris, France like?
+const EDIT_PROMPT = `
+You are editing an existing JSX component. The user will provide the current code and describe the changes they want.
+
+## Response Format
+
+Before each diff block, include a brief progress note using the format:
+[note] Brief description of what this change does
+
+Then provide the search/replace diff block:
+
+\`\`\`
+[note] Adding onClick handler to the button
+<<<<<<< SEARCH
+exact code to find
+=======
+replacement code
+>>>>>>> REPLACE
+\`\`\`
+
+## Rules
+- SEARCH block must match the existing code EXACTLY (whitespace, indentation, everything)
+- You can include multiple diff blocks for multiple changes
+- Each diff block should have its own [note] progress annotation
+- Keep changes minimal and targeted
+- Do NOT output the full file - only the diffs
+- If clarification is needed, ask briefly before any diffs
+
+## Summary
+After all diffs, provide a brief markdown summary of the changes made. Use formatting like:
+- **Bold** for emphasis on key changes
+- Bullet points for listing multiple changes
+- Keep it concise (2-4 lines max)
+- Do NOT include a heading or title, like "Summary"
+`;
 
 export default defineConfig({
   plugins: [
@@ -133,6 +178,48 @@ export default defineConfig({
           }
         });
 
+        server.middlewares.use('/api/edit', async (req, res) => {
+          if (req.method === 'OPTIONS') {
+            res.writeHead(200);
+            res.end();
+            return;
+          }
+
+          if (req.method !== 'POST') {
+            res.writeHead(405);
+            res.end();
+            return;
+          }
+
+          let body = '';
+          req.on('data', (chunk) => (body += chunk));
+          req.on('end', async () => {
+            const { code, prompt }: { code: string; prompt: string } =
+              JSON.parse(body);
+
+            const provider = createOpenAICompatible({
+              name: 'copilot-proxy',
+              baseURL: COPILOT_PROXY_URL,
+            });
+
+            const result = streamText({
+              model: provider('claude-opus-4.5'),
+              system: `Current component code:\n\`\`\`tsx\n${code}\n\`\`\`\n\n${EDIT_PROMPT}`,
+              messages: [{ role: 'user', content: prompt }],
+            });
+
+            res.setHeader('Content-Type', 'text/plain');
+            res.setHeader('Transfer-Encoding', 'chunked');
+            res.writeHead(200);
+
+            // Stream the response as it generates
+            for await (const chunk of result.textStream) {
+              res.write(chunk);
+            }
+            res.end();
+          });
+        });
+
         server.middlewares.use('/api/chat', async (req, res) => {
           if (req.method === 'OPTIONS') {
             res.writeHead(200);
@@ -157,7 +244,6 @@ export default defineConfig({
               metadata?: { patchwork: { compilers: string[] } };
             } = JSON.parse(body);
 
-            // Ensure all messages have parts array
             const normalizedMessages = messages.map((msg) => ({
               ...msg,
               parts: msg.parts ?? [{ type: 'text' as const, text: '' }],
@@ -169,15 +255,10 @@ export default defineConfig({
             });
 
             const result = streamText({
-              model: provider('gpt-4o') as any,
-              system: `---
-patchwork:
-  compilers: ${
-    (metadata?.patchwork?.compilers ?? []).join(',') ?? '[]'
-  }              
----
-
-${PATCHWORK_PROMPT}`,
+              model: provider('claude-opus-4.5'),
+              system: `---\npatchwork:\n  compilers: ${
+                (metadata?.patchwork?.compilers ?? []).join(',') ?? '[]'
+              }\n---\n\n${PATCHWORK_PROMPT}`,
               messages: await convertToModelMessages(normalizedMessages),
               stopWhen: stepCountIs(5),
               tools: {
