@@ -8,4 +8,6 @@ export default defineConfig({
   clean: true,
   target: 'es2020',
   external: ['react', 'react-dom'],
+  // Bundle utility dependencies so browser can load module without import map
+  noExternal: ['clsx', 'tailwind-merge', 'class-variance-authority'],
 });

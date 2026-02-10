@@ -136,8 +136,8 @@ export function JsxPreview({ code: originalCode, compiler }: JsxPreviewProps) {
 
   return (
     <>
-      <div className="my-3 border rounded-lg overflow-hidden">
-        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b">
+      <div className="my-3 border rounded-lg">
+        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b rounded-t-lg">
           <Code className="h-4 w-4 text-muted-foreground" />
           {editCount > 0 && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">

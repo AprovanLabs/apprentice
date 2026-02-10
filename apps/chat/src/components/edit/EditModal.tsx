@@ -137,6 +137,7 @@ export function EditModal({
           entries={session.history}
           streamingNotes={session.streamingNotes}
           isStreaming={session.isApplying}
+          pendingPrompt={session.pendingPrompt}
           className="h-48"
         />
 

@@ -33,6 +33,7 @@ Respond as simple text, encoding a single JSX file that would correctly compile,
 - ALWAYS output the COMPLETE code block with opening \`\`\`tsx and closing \`\`\` markers
 - NEVER truncate or cut off code - finish the entire component before stopping
 - If the component is complex, simplify it rather than leaving it incomplete
+- Do NOT include: a heading/title
 
 ### Visual Design Guidelines
 Create professional, polished interfaces that present information **spatially** rather than as vertical lists:
@@ -92,7 +93,7 @@ After all diffs, provide a brief markdown summary of the changes made. Use forma
 - **Bold** for emphasis on key changes
 - Bullet points for listing multiple changes
 - Keep it concise (2-4 lines max)
-- Do NOT include a heading or title, like "Summary"
+- Do NOT include: a heading/title
 `;
 
 export default defineConfig({
@@ -118,7 +119,10 @@ export default defineConfig({
 
         // Serve local packages at /_local-packages/<package-name>/...
         server.middlewares.use('/_local-packages', (req, res, next) => {
-          const url = req.url || '';
+          const rawUrl = req.url || '';
+
+          // Strip query string (Vite adds ?import to dynamic imports)
+          const url = rawUrl.split('?')[0];
 
           // Parse the package name from URL (handles scoped packages like @scope/name)
           const match = url.match(/^\/@([^/]+)\/([^/@]+)(.*)$/);
@@ -151,11 +155,14 @@ export default defineConfig({
             const mainEntry = pkgJson.main || 'dist/index.js';
             filePath = path.join(localPath, mainEntry);
           } else {
-            // Specific file requested
-            filePath = path.join(
-              localPath,
-              rest.startsWith('/') ? rest.slice(1) : rest,
-            );
+            // Specific file requested - resolve from dist/ for JS files (chunks)
+            const normalizedPath = rest.startsWith('/') ? rest.slice(1) : rest;
+
+            // First try dist/ (for built chunks), then fall back to package root
+            const distPath = path.join(localPath, 'dist', normalizedPath);
+            const rootPath = path.join(localPath, normalizedPath);
+
+            filePath = fs.existsSync(distPath) ? distPath : rootPath;
           }
 
           try {

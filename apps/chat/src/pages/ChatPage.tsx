@@ -319,7 +319,7 @@ export default function ChatPage() {
                 alt="Aprovan"
                 className="h-8 w-8 rounded-full"
               />
-              <span className="text-lg">Chat</span>
+              <span className="text-lg">patchwork</span>
               {status !== 'streaming' && <Badge
                 variant="secondary"
                 className="ml-auto"

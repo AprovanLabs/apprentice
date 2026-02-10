@@ -189,15 +189,28 @@ export async function loadImage(spec: string): Promise<LoadedImage> {
   if (packageJson.main && typeof window !== 'undefined') {
     try {
       const versionSuffix = version ? `@${version}` : '';
+      // Import with explicit main entry path so relative imports resolve correctly
+      // Without this, the browser treats the package name as a file and resolves
+      // relative imports to the wrong directory
+      const mainEntry = packageJson.main.startsWith('./')
+        ? packageJson.main.slice(2)
+        : packageJson.main;
+      const importUrl = `${cdnBaseUrl}/${name}${versionSuffix}/${mainEntry}`;
+      console.log('[patchwork-compiler] Loading image module from:', importUrl);
       const setupModule = await import(
         /* webpackIgnore: true */
-        `${cdnBaseUrl}/${name}${versionSuffix}`
+        importUrl
       );
+      console.log('[patchwork-compiler] Image module loaded:', Object.keys(setupModule));
       if (typeof setupModule.setup === 'function') {
         setup = setupModule.setup;
+        console.log('[patchwork-compiler] Setup function found');
+      } else {
+        console.log('[patchwork-compiler] No setup function in module');
       }
-    } catch {
-      // Setup is optional, ignore errors
+    } catch (err) {
+      // Setup is optional, but log the error for debugging
+      console.error('[patchwork-compiler] Failed to load image module:', err);
     }
   }
 

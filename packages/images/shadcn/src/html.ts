@@ -3,6 +3,8 @@
  *
  * Generates complete HTML documents for browser widget rendering.
  * The image owns the full HTML template including CSS, import maps, and mounting code.
+ *
+ * Uses Tailwind Play CDN for runtime CSS generation.
  */
 
 import { DEFAULT_CSS_VARIABLES, DARK_CSS_VARIABLES } from './setup.js';
@@ -58,58 +60,11 @@ body {
 }
 
 /**
- * Generate Tailwind configuration script
+ * Return the Tailwind Play CDN script URL.
+ * Play CDN auto-initializes with MutationObserver, generating CSS on-demand.
  */
-function generateTailwindConfig(): string {
-  return `
-tailwind.config = {
-  darkMode: 'class',
-  theme: {
-    extend: {
-      colors: {
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
-        primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
-        },
-        secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))',
-        },
-        destructive: {
-          DEFAULT: 'hsl(var(--destructive))',
-          foreground: 'hsl(var(--destructive-foreground))',
-        },
-        muted: {
-          DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))',
-        },
-        accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))',
-        },
-        popover: {
-          DEFAULT: 'hsl(var(--popover))',
-          foreground: 'hsl(var(--popover-foreground))',
-        },
-        card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
-        },
-      },
-      borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
-      },
-    },
-  },
-};
-`;
+function getTailwindCdnScript(): string {
+  return 'https://cdn.tailwindcss.com';
 }
 
 /**
@@ -254,6 +209,9 @@ function generateServiceBridge(services: string[]): string {
 /**
  * Generate a complete HTML document for rendering a widget
  *
+ * Uses Tailwind Play CDN which detects class usage via MutationObserver and
+ * generates CSS on-demand.
+ *
  * @param compiledJs - The compiled widget JavaScript code
  * @param importMap - Import map for dependencies
  * @param options - HTML generation options
@@ -272,7 +230,7 @@ export function generateHtml(
   } = options;
 
   const themeCss = generateThemeCss(theme);
-  const tailwindConfig = generateTailwindConfig();
+  const tailwindCdn = getTailwindCdnScript();
   const widgetCode = transformWidgetCode(compiledJs);
   const importMapJson = JSON.stringify({ imports: importMap }, null, 2);
   const propsJson = JSON.stringify(props);
@@ -285,8 +243,59 @@ export function generateHtml(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>${tailwindConfig}</script>
+  <!-- Tailwind Play CDN - config must be set BEFORE script loads -->
+  <script>
+    window.tailwind = {
+      config: ${JSON.stringify({
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              border: 'hsl(var(--border))',
+              input: 'hsl(var(--input))',
+              ring: 'hsl(var(--ring))',
+              background: 'hsl(var(--background))',
+              foreground: 'hsl(var(--foreground))',
+              primary: {
+                DEFAULT: 'hsl(var(--primary))',
+                foreground: 'hsl(var(--primary-foreground))',
+              },
+              secondary: {
+                DEFAULT: 'hsl(var(--secondary))',
+                foreground: 'hsl(var(--secondary-foreground))',
+              },
+              destructive: {
+                DEFAULT: 'hsl(var(--destructive))',
+                foreground: 'hsl(var(--destructive-foreground))',
+              },
+              muted: {
+                DEFAULT: 'hsl(var(--muted))',
+                foreground: 'hsl(var(--muted-foreground))',
+              },
+              accent: {
+                DEFAULT: 'hsl(var(--accent))',
+                foreground: 'hsl(var(--accent-foreground))',
+              },
+              popover: {
+                DEFAULT: 'hsl(var(--popover))',
+                foreground: 'hsl(var(--popover-foreground))',
+              },
+              card: {
+                DEFAULT: 'hsl(var(--card))',
+                foreground: 'hsl(var(--card-foreground))',
+              },
+            },
+            borderRadius: {
+              lg: 'var(--radius)',
+              md: 'calc(var(--radius) - 2px)',
+              sm: 'calc(var(--radius) - 4px)',
+            },
+          },
+        },
+      })}
+    };
+  </script>
+  <script src="${tailwindCdn}" crossorigin></script>
   <script type="importmap">${importMapJson}</script>
   <style>${themeCss}${customCss}</style>
 </head>

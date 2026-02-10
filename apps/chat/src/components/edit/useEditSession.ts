@@ -23,6 +23,7 @@ export function useEditSession(
   const [isApplying, setIsApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streamingNotes, setStreamingNotes] = useState<string[]>([]);
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
   const performEdit = useCallback(
     async (
@@ -75,6 +76,7 @@ export function useEditSession(
       setIsApplying(true);
       setError(null);
       setStreamingNotes([]);
+      setPendingPrompt(prompt);
 
       try {
         const result = await performEdit(code, prompt);
@@ -85,6 +87,7 @@ export function useEditSession(
       } finally {
         setIsApplying(false);
         setStreamingNotes([]);
+        setPendingPrompt(null);
       }
     },
     [code, isApplying, performEdit],
@@ -112,6 +115,7 @@ export function useEditSession(
     isApplying,
     error,
     streamingNotes,
+    pendingPrompt,
     submitEdit,
     revert,
     updateCode,

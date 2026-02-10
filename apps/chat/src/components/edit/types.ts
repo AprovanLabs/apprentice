@@ -11,6 +11,7 @@ export interface EditSessionState {
   isApplying: boolean;
   error: string | null;
   streamingNotes: string[];
+  pendingPrompt: string | null;
 }
 
 export interface EditSessionActions {

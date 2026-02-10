@@ -8,11 +8,7 @@ import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import type { Server } from 'node:http';
 import { CopilotClient } from '../client.js';
 import { isConfigured, getOAuthToken } from '../auth.js';
-import type {
-  ChatCompletionRequest,
-  ChatCompletionResponse,
-  ModelsResponse,
-} from '../types.js';
+import type { ChatCompletionRequest, ModelsResponse } from '../types.js';
 
 export interface ServerOptions {
   /** Port to listen on (default: 6433) */
