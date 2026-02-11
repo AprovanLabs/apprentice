@@ -87,14 +87,11 @@ export async function setup(
   root: HTMLElement,
   options: SetupOptions = {},
 ): Promise<void> {
-  console.log('[patchwork-shadcn] setup() called', { root, options });
   const { darkMode = 'system', cssRuntime = true, cssVariables = {} } = options;
 
   // Inject Tailwind Play CDN and wait for it to load
   if (cssRuntime) {
-    console.log('[patchwork-shadcn] Injecting Tailwind Play CDN...');
     await injectTailwindPlayCdn();
-    console.log('[patchwork-shadcn] Tailwind Play CDN loaded');
   }
 
   // Determine if dark mode

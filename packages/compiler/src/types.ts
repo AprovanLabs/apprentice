@@ -68,6 +68,10 @@ export interface MountedWidget {
   target: HTMLElement;
   /** Iframe element (if mode is 'iframe') */
   iframe?: HTMLIFrameElement;
+  /** Inputs used for the mount (if provided) */
+  inputs?: Record<string, unknown>;
+  /** Sandbox attributes used for iframe mode (if provided) */
+  sandbox?: string[];
   /** Unmount function */
   unmount: () => void;
 }
@@ -100,6 +104,8 @@ export interface LoadedImage {
   name: string;
   /** Resolved version */
   version: string;
+  /** Browser-importable module URL for this image (when loaded from CDN/local HTTP) */
+  moduleUrl?: string;
   /** Package configuration */
   config: ImageConfig;
   /** Package dependencies */
@@ -116,8 +122,10 @@ export interface CompilerOptions {
   image: string;
   /** Backend proxy URL for service calls */
   proxyUrl: string;
-  /** Base URL for CDN (default: 'https://esm.sh'). Use for local development. */
+  /** Base URL for CDN (default: 'https://esm.sh'). Used for loading image packages. */
   cdnBaseUrl?: string;
+  /** Base URL for widget imports (default: same as cdnBaseUrl). Used for transforming imports in widget code. */
+  widgetCdnBaseUrl?: string;
 }
 
 // Compiler interface
@@ -127,9 +135,6 @@ export interface Compiler {
 
   /** Check if an image is loaded */
   isImageLoaded(spec: string): boolean;
-
-  /** Get the loaded image */
-  getImage(): LoadedImage | null;
 
   /** Compile widget source to ESM */
   compile(

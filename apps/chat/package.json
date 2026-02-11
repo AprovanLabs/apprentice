@@ -4,19 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n vite,proxy -c blue,green \"vite\" \"pnpm dev:proxy\"",
+    "dev": "concurrently -n proxy,stitchery,vite -c green,magenta,blue \"pnpm dev:proxy\" \"pnpm dev:stitchery\" \"sleep 2 && vite\"",
     "dev:client": "vite",
     "dev:proxy": "node ../../packages/copilot-proxy/dist/cli.js serve",
+    "dev:stitchery": "node ../../packages/stitchery/dist/cli.js serve --mcp apprentice:node:../../packages/apprentice/dist/mcp-server.js --mcp weather:npx:-y,@dangahagan/weather-mcp@latest --local-package @aprovan/patchwork-shadcn:../../packages/images/shadcn -v",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.35",
-    "@ai-sdk/mcp": "^1.0.18",
-    "@ai-sdk/openai-compatible": "^2.0.26",
     "@ai-sdk/react": "^3.0.69",
     "@aprovan/copilot-proxy": "workspace:*",
     "@aprovan/patchwork-compiler": "workspace:*",
+    "@aprovan/stitchery": "workspace:*",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-scroll-area": "^1.2.10",

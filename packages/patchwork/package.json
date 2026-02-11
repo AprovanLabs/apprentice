@@ -1,7 +1,7 @@
 {
   "name": "@aprovan/patchwork",
   "version": "0.1.0",
-  "description": "Apprentice Patchwork - widget generation and runtime",
+  "description": "Patchwork, a platform for building AI-powered applications with pluggable UI components and a flexible compiler.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -20,18 +20,6 @@
   "dependencies": {
     "esbuild": "^0.27.2",
     "typescript": "^5.7.3"
-  },
-  "peerDependencies": {
-    "@aprovan/patchwork-ink": "^0.1.0",
-    "@aprovan/patchwork-shadcn": "^0.1.0"
-  },
-  "peerDependenciesMeta": {
-    "@aprovan/patchwork-ink": {
-      "optional": true
-    },
-    "@aprovan/patchwork-shadcn": {
-      "optional": true
-    }
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

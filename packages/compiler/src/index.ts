@@ -100,6 +100,7 @@ export {
   mountIframe,
   reloadIframe,
   disposeIframeBridge,
+  DEV_SANDBOX,
   // Bridge
   createHttpServiceProxy,
   createFieldAccessProxy,

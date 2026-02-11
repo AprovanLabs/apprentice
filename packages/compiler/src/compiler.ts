@@ -1,21 +1,17 @@
-/**
- * Core compiler - compiles JSX/TSX to ESM
- */
-
 import * as esbuild from 'esbuild-wasm';
 import type {
   Compiler,
   CompilerOptions,
   CompileOptions,
   CompiledWidget,
-  LoadedImage,
   Manifest,
   MountedWidget,
   MountOptions,
   ServiceProxy,
 } from './types.js';
 import { getImageRegistry } from './images/registry.js';
-import { setCdnBaseUrl } from './images/loader.js';
+import { setCdnBaseUrl as setImageCdnBaseUrl } from './images/loader.js';
+import { setCdnBaseUrl as setTransformCdnBaseUrl } from './transforms/cdn.js';
 import { cdnTransformPlugin } from './transforms/cdn.js';
 import { createHttpServiceProxy } from './mount/bridge.js';
 import { mountEmbedded, reloadEmbedded } from './mount/embedded.js';
@@ -75,39 +71,41 @@ export async function createCompiler(
   // Initialize esbuild-wasm
   await initEsbuild();
 
-  const { image: imageSpec, proxyUrl, cdnBaseUrl } = options;
+  const { image: imageSpec, proxyUrl, cdnBaseUrl, widgetCdnBaseUrl } = options;
 
-  // Set CDN base URL if provided (for local development)
+  // Set CDN base URLs (can be different for image loading vs widget imports)
   if (cdnBaseUrl) {
-    setCdnBaseUrl(cdnBaseUrl);
+    setImageCdnBaseUrl(cdnBaseUrl);
+  }
+  // Widget imports use widgetCdnBaseUrl if provided, otherwise fall back to cdnBaseUrl or default
+  if (widgetCdnBaseUrl) {
+    setTransformCdnBaseUrl(widgetCdnBaseUrl);
+  } else if (cdnBaseUrl) {
+    setTransformCdnBaseUrl(cdnBaseUrl);
   }
 
   const registry = getImageRegistry();
 
-  // Pre-load the image
+  // Pre-load the initial image
   await registry.preload(imageSpec);
-  const image = registry.get(imageSpec) || null;
 
   // Create service proxy
   const proxy: ServiceProxy = createHttpServiceProxy(proxyUrl);
 
-  return new PatchworkCompiler(image, proxy, registry);
+  return new PatchworkCompiler(proxy, registry);
 }
 
 /**
  * Patchwork compiler implementation
  */
 class PatchworkCompiler implements Compiler {
-  private image: LoadedImage | null;
   private proxy: ServiceProxy;
   private registry: ReturnType<typeof getImageRegistry>;
 
   constructor(
-    image: LoadedImage | null,
     proxy: ServiceProxy,
     registry: ReturnType<typeof getImageRegistry>,
   ) {
-    this.image = image;
     this.proxy = proxy;
     this.registry = registry;
   }
@@ -127,13 +125,6 @@ class PatchworkCompiler implements Compiler {
   }
 
   /**
-   * Get the loaded image
-   */
-  getImage(): LoadedImage | null {
-    return this.image;
-  }
-
-  /**
    * Compile widget source to ESM
    */
   async compile(
@@ -146,16 +137,20 @@ class PatchworkCompiler implements Compiler {
     // Determine loader based on options (JavaScript-first)
     const loader = typescript ? 'tsx' : 'jsx';
 
+    // Get image from registry based on manifest
+    const image = this.registry.get(manifest.image) || null;
+
     // Get config from image (with proper typing)
-    const esbuildConfig = this.image?.config.esbuild || {};
-    const frameworkConfig = this.image?.config.framework || {};
+    const esbuildConfig = image?.config.esbuild || {};
+    const frameworkConfig = image?.config.framework || {};
 
     const target = esbuildConfig.target || 'es2020';
     const format = esbuildConfig.format || 'esm';
+    const jsx = esbuildConfig.jsx ?? 'automatic';
 
     // Collect all packages (image deps + manifest packages)
     const packages: Record<string, string> = {
-      ...(this.image?.dependencies || {}),
+      ...(image?.dependencies || {}),
       ...(manifest.packages || {}),
     };
 
@@ -165,7 +160,7 @@ class PatchworkCompiler implements Compiler {
     const deps = frameworkConfig.deps || {};
 
     // Get import path aliases from image config (e.g., { '@/components/ui/*': '@packagedcn/react' })
-    const aliases = this.image?.config.aliases || {};
+    const aliases = image?.config.aliases || {};
 
     // Build with esbuild using image-provided configuration
     const result = await esbuild.build({
@@ -178,10 +173,13 @@ class PatchworkCompiler implements Compiler {
       format,
       target,
       platform: manifest.platform === 'cli' ? 'node' : 'browser',
-      // Use image-provided JSX settings, falling back to classic transform
-      jsx: esbuildConfig.jsx || 'transform',
-      jsxFactory: esbuildConfig.jsxFactory || 'React.createElement',
-      jsxFragment: esbuildConfig.jsxFragment || 'React.Fragment',
+      jsx,
+      ...(esbuildConfig.jsxFactory
+        ? { jsxFactory: esbuildConfig.jsxFactory }
+        : {}),
+      ...(esbuildConfig.jsxFragment
+        ? { jsxFragment: esbuildConfig.jsxFragment }
+        : {}),
       write: false,
       sourcemap: 'inline',
       plugins: [
@@ -211,10 +209,11 @@ class PatchworkCompiler implements Compiler {
     widget: CompiledWidget,
     options: MountOptions,
   ): Promise<MountedWidget> {
+    const image = this.registry.get(widget.manifest.image) || null;
     if (options.mode === 'iframe') {
-      return mountIframe(widget, options, this.image, this.proxy);
+      return mountIframe(widget, options, image, this.proxy);
     }
-    return mountEmbedded(widget, options, this.image, this.proxy);
+    return mountEmbedded(widget, options, image, this.proxy);
   }
 
   /**
@@ -234,12 +233,13 @@ class PatchworkCompiler implements Compiler {
   ): Promise<void> {
     // Compile new version
     const widget = await this.compile(source, manifest);
+    const image = this.registry.get(widget.manifest.image) || null;
 
     // Reload based on mode
     if (mounted.mode === 'iframe') {
-      await reloadIframe(mounted, widget, this.image, this.proxy);
+      await reloadIframe(mounted, widget, image, this.proxy);
     } else {
-      await reloadEmbedded(mounted, widget, this.image, this.proxy);
+      await reloadEmbedded(mounted, widget, image, this.proxy);
     }
   }
 }

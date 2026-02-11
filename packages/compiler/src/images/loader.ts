@@ -137,7 +137,9 @@ async function loadLocalImage(name: string): Promise<LoadedImage | null> {
     if (packageJson.main) {
       try {
         const mainPath = join(packageDir, packageJson.main);
-        const setupModule = await import(/* webpackIgnore: true */ mainPath);
+        const setupModule = await import(
+          /* webpackIgnore: true */ /* @vite-ignore */ mainPath
+        );
         if (typeof setupModule.setup === 'function') {
           setup = setupModule.setup;
         }
@@ -186,6 +188,7 @@ export async function loadImage(spec: string): Promise<LoadedImage> {
 
   // Try to load setup function if main is specified
   let setup: LoadedImage['setup'];
+  let moduleUrl: string | undefined;
   if (packageJson.main && typeof window !== 'undefined') {
     try {
       const versionSuffix = version ? `@${version}` : '';
@@ -196,17 +199,13 @@ export async function loadImage(spec: string): Promise<LoadedImage> {
         ? packageJson.main.slice(2)
         : packageJson.main;
       const importUrl = `${cdnBaseUrl}/${name}${versionSuffix}/${mainEntry}`;
-      console.log('[patchwork-compiler] Loading image module from:', importUrl);
+      moduleUrl = importUrl;
       const setupModule = await import(
-        /* webpackIgnore: true */
+        /* @vite-ignore */
         importUrl
       );
-      console.log('[patchwork-compiler] Image module loaded:', Object.keys(setupModule));
       if (typeof setupModule.setup === 'function') {
         setup = setupModule.setup;
-        console.log('[patchwork-compiler] Setup function found');
-      } else {
-        console.log('[patchwork-compiler] No setup function in module');
       }
     } catch (err) {
       // Setup is optional, but log the error for debugging
@@ -217,6 +216,7 @@ export async function loadImage(spec: string): Promise<LoadedImage> {
   return {
     name: packageJson.name,
     version: packageJson.version,
+    moduleUrl,
     config,
     dependencies: packageJson.dependencies || {},
     setup,

@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Code, Eye, AlertCircle, Loader2, Pencil, RotateCcw, MessageSquare } from 'lucide-react';
 import type { Compiler, MountedWidget } from '@aprovan/patchwork-compiler';
+import { DEV_SANDBOX } from '@aprovan/patchwork-compiler';
 import { EditModal, type CompileFn } from './edit';
 
-interface JsxPreviewProps {
+interface CodePreviewProps {
   code: string;
   compiler: Compiler | null;
 }
 
-function useJsxCompiler(compiler: Compiler | null, code: string, enabled: boolean) {
+function useCodeCompiler(compiler: Compiler | null, code: string, enabled: boolean) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -31,23 +32,27 @@ function useJsxCompiler(compiler: Compiler | null, code: string, enabled: boolea
           mountedRef.current = null;
         }
 
-        const image = compiler.getImage();
         const widget = await compiler.compile(
           code,
           {
             name: 'preview',
             version: '1.0.0',
             platform: 'browser',
-            image: image?.name || '@aprovan/patchwork-shadcn',
+            image: '@aprovan/patchwork-shadcn',
           },
           { typescript: true }
         );
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         const mounted = await compiler.mount(widget, {
           target: containerRef.current,
-          mode: 'embedded',
+          mode: 'embedded'
+          // mode: 'iframe',
+          // Use DEV_SANDBOX in development for same-origin module loading
+          // sandbox: import.meta.env.DEV ? DEV_SANDBOX : undefined,
         });
 
         mountedRef.current = mounted;
@@ -76,13 +81,13 @@ function useJsxCompiler(compiler: Compiler | null, code: string, enabled: boolea
   return { containerRef, loading, error };
 }
 
-export function JsxPreview({ code: originalCode, compiler }: JsxPreviewProps) {
+export function CodePreview({ code: originalCode, compiler }: CodePreviewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [currentCode, setCurrentCode] = useState(originalCode);
   const [editCount, setEditCount] = useState(0);
 
-  const { containerRef, loading, error } = useJsxCompiler(
+  const { containerRef, loading, error } = useCodeCompiler(
     compiler,
     currentCode,
     showPreview && !isEditing
@@ -101,14 +106,13 @@ export function JsxPreview({ code: originalCode, compiler }: JsxPreviewProps) {
       };
 
       try {
-        const image = compiler.getImage();
         await compiler.compile(
           code,
           {
             name: 'preview',
             version: '1.0.0',
             platform: 'browser',
-            image: image?.name || '@aprovan/patchwork-shadcn',
+            image: '@aprovan/patchwork-shadcn',
           },
           { typescript: true }
         );
@@ -222,7 +226,7 @@ function ModalPreview({
   code: string;
   compiler: Compiler | null;
 }) {
-  const { containerRef, loading, error } = useJsxCompiler(compiler, code, true);
+  const { containerRef, loading, error } = useCodeCompiler(compiler, code, true);
 
   return (
     <>

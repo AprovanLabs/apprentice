@@ -1,5 +1,10 @@
 export { mountEmbedded, reloadEmbedded } from './embedded.js';
-export { mountIframe, reloadIframe, disposeIframeBridge } from './iframe.js';
+export {
+  mountIframe,
+  reloadIframe,
+  disposeIframeBridge,
+  DEV_SANDBOX,
+} from './iframe.js';
 export {
   createHttpServiceProxy,
   createFieldAccessProxy,

@@ -23,8 +23,8 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { UIMessage } from 'ai';
 import { createCompiler, type Compiler } from '@aprovan/patchwork-compiler';
-import { extractJsxBlocks } from '@/lib/jsx-extractor';
-import { JsxPreview } from '@/components/JsxPreview';
+import { extractCodeBlocks } from '@/lib/code-extractor';
+import { CodePreview } from '@/components/CodePreview';
 import { MarkdownEditor } from '@/components/MarkdownEditor';
 
 const APROVAN_LOGO =
@@ -38,19 +38,19 @@ function TextPart({ text, isUser }: { text: string; isUser: boolean }) {
 
   if (isUser) {
     return (
-      <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-pre:my-2 prose-code:before:content-none prose-code:after:content-none">
+      <div className="prose prose-sm prose-invert prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-pre:my-2 prose-code:before:content-none prose-code:after:content-none">
         <Markdown remarkPlugins={[remarkGfm]}>{text}</Markdown>
       </div>
     );
   }
 
-  const parts = extractJsxBlocks(text);
+  const parts = extractCodeBlocks(text);
 
   return (
-    <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-pre:my-2 prose-code:before:content-none prose-code:after:content-none">
+    <div className="prose prose-sm dark:prose-invert prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-pre:my-2 prose-code:before:content-none prose-code:after:content-none">
       {parts.map((part, index) => {
-        if (part.type === 'jsx') {
-          return <JsxPreview key={index} code={part.content} compiler={compiler} />;
+        if (part.type === 'code') {
+          return <CodePreview key={index} code={part.content} compiler={compiler} />;
         }
         return <Markdown key={index} remarkPlugins={[remarkGfm]}>{part.content}</Markdown>;
       })}
@@ -265,7 +265,9 @@ function MessageBubble({ message }: { message: UIMessage }) {
 
 const PROXY_URL = '/api/proxy';
 const IMAGE_SPEC = '@aprovan/patchwork-shadcn';
-const CDN_BASE_URL = import.meta.env.DEV ? '/_local-packages' : 'https://esm.sh';
+// Local proxy for loading image packages, esm.sh for widget imports
+const IMAGE_CDN_URL = import.meta.env.DEV ? '/_local-packages' : 'https://esm.sh';
+const WIDGET_CDN_URL = 'https://esm.sh'; // Widget imports need esm.sh bundles like @packagedcn
 
 export default function ChatPage() {
   const [input, setInput] = useState('What\'s the weather in Paris, France like?');
@@ -273,7 +275,12 @@ export default function ChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    createCompiler({ image: IMAGE_SPEC, proxyUrl: PROXY_URL, cdnBaseUrl: CDN_BASE_URL })
+    createCompiler({ 
+      image: IMAGE_SPEC, 
+      proxyUrl: PROXY_URL, 
+      cdnBaseUrl: IMAGE_CDN_URL,
+      widgetCdnBaseUrl: WIDGET_CDN_URL,
+    })
       .then(setCompiler)
       .catch(console.error);
   }, []);
@@ -320,12 +327,6 @@ export default function ChatPage() {
                 className="h-8 w-8 rounded-full"
               />
               <span className="text-lg">patchwork</span>
-              {status !== 'streaming' && <Badge
-                variant="secondary"
-                className="ml-auto"
-              >
-                {status}
-              </Badge>}
             </CardTitle>
           </CardHeader>
 

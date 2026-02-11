@@ -4,7 +4,16 @@
 
 import type { Plugin } from 'esbuild-wasm';
 
-const ESM_SH_BASE = 'https://esm.sh';
+const DEFAULT_CDN_BASE = 'https://esm.sh';
+let cdnBaseUrl = DEFAULT_CDN_BASE;
+
+export function setCdnBaseUrl(url: string): void {
+  cdnBaseUrl = url;
+}
+
+export function getCdnBaseUrl(): string {
+  return cdnBaseUrl;
+}
 
 // Packages that should be externalized (not bundled from CDN)
 const EXTERNAL_PACKAGES = new Set(['react', 'react-dom', 'ink']);
@@ -92,7 +101,7 @@ export function toEsmShUrl(
   subpath?: string,
   deps?: Record<string, string>,
 ): string {
-  let url = `${ESM_SH_BASE}/${packageName}`;
+  let url = `${cdnBaseUrl}/${packageName}`;
 
   if (version) {
     url += `@${version}`;

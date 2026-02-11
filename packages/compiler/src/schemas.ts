@@ -153,15 +153,9 @@ export const DEFAULT_IMAGE_CONFIG: ImageConfig = {
   esbuild: {
     target: 'es2020',
     format: 'esm',
-    jsx: 'transform',
-    jsxFactory: 'React.createElement',
-    jsxFragment: 'React.Fragment',
+    jsx: 'automatic',
   },
-  framework: {
-    globals: { react: 'React', 'react-dom': 'ReactDOM' },
-    preload: ['https://esm.sh/react@18', 'https://esm.sh/react-dom@18/client'],
-    deps: { react: '18', 'react-dom': '18' },
-  },
+  framework: {},
 };
 
 // Default CLI ImageConfig for fallback

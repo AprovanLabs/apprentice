@@ -5,17 +5,11 @@ const CODE_BLOCK_REGEX = /```([a-zA-Z0-9_+-]*)\n([\s\S]*?)```/g;
 // Matches an unclosed code block at the end (streaming case)
 const UNCLOSED_BLOCK_REGEX = /```([a-zA-Z0-9_+-]*)\n([\s\S]*)$/;
 
-// Languages that should be treated as JSX/TSX (renderable React components)
-const JSX_LANGUAGES = new Set(['jsx', 'tsx', 'react']);
-
 export type TextPart = { type: 'text'; content: string };
-export type CodePart = { type: 'code'; content: string; language: string };
-export type JsxPart = { type: 'jsx'; content: string; language: string };
-export type ParsedPart = TextPart | CodePart | JsxPart;
+export type CodePart = { type: 'code' | string; content: string; language: 'jsx' | 'tsx' | string };
+export type ParsedPart = TextPart | CodePart | CodePart;
 
 export interface ExtractOptions {
-  /** Languages to treat as JSX (default: jsx, tsx, react) */
-  jsxLanguages?: Set<string>;
   /** Only extract these languages (default: all) */
   filterLanguages?: Set<string>;
   /** Include unclosed code blocks at the end (for streaming) */
@@ -24,13 +18,12 @@ export interface ExtractOptions {
 
 /**
  * Extract code blocks from markdown text.
- * JSX/TSX blocks are returned with type 'jsx', other code blocks with type 'code'.
  */
 export function extractCodeBlocks(
   text: string,
   options: ExtractOptions = {}
 ): ParsedPart[] {
-  const { jsxLanguages = JSX_LANGUAGES, filterLanguages, includeUnclosed = false } = options;
+  const { filterLanguages, includeUnclosed = false } = options;
   const parts: ParsedPart[] = [];
   let lastIndex = 0;
 
@@ -61,11 +54,7 @@ export function extractCodeBlocks(
 
     // Only add the block if it passes the filter
     if (included) {
-      if (jsxLanguages.has(language)) {
-        parts.push({ type: 'jsx', content, language });
-      } else {
-        parts.push({ type: 'code', content, language });
-      }
+      parts.push({ type: 'code', content, language });
     }
   }
 
@@ -88,11 +77,7 @@ export function extractCodeBlocks(
       }
 
       if (included) {
-        if (jsxLanguages.has(language)) {
-          parts.push({ type: 'jsx', content, language });
-        } else {
-          parts.push({ type: 'code', content, language });
-        }
+        parts.push({ type: 'code', content, language });
       }
       lastIndex = text.length; // Mark all text as processed
     }
@@ -115,31 +100,19 @@ export function extractCodeBlocks(
 }
 
 /**
- * Extract only JSX/TSX blocks from markdown text.
- * Convenience function that filters to only jsx-type parts.
- * Only returns complete (closed) code blocks.
- */
-export function extractJsxBlocks(text: string): ParsedPart[] {
-  return extractCodeBlocks(text, {
-    filterLanguages: JSX_LANGUAGES,
-    includeUnclosed: false,
-  });
-}
-
-/**
  * Find the first JSX/TSX block in the text.
  * Returns null if no JSX block is found.
  */
-export function findFirstJsxBlock(text: string): JsxPart | null {
+export function findFirstCodeBlock(text: string): CodePart | null {
   const parts = extractCodeBlocks(text);
-  return (parts.find((p) => p.type === 'jsx') as JsxPart) ?? null;
+  return (parts.find((p) => p.type === 'code') as CodePart) ?? null;
 }
 
 /**
  * Check if text contains any JSX/TSX code blocks.
  */
-export function hasJsxBlock(text: string): boolean {
-  return findFirstJsxBlock(text) !== null;
+export function hasCodeBlock(text: string): boolean {
+  return findFirstCodeBlock(text) !== null;
 }
 
 /**
@@ -149,7 +122,7 @@ export function getCodeBlockLanguages(text: string): Set<string> {
   const parts = extractCodeBlocks(text);
   const languages = new Set<string>();
   for (const part of parts) {
-    if (part.type === 'jsx' || part.type === 'code') {
+    if (part.type === 'code') {
       languages.add(part.language);
     }
   }

@@ -1,9 +1,45 @@
 const DIFF_BLOCK_REGEX = /<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n>>>>>>> REPLACE/g;
 
+/** Patterns that indicate diff markers in text */
+const DIFF_MARKER_PATTERNS = [
+  /^<<<<<<< SEARCH\s*$/m,
+  /^=======\s*$/m,
+  /^>>>>>>> REPLACE\s*$/m,
+];
+
 export interface DiffBlock {
   search: string;
   replace: string;
   progressNote?: string;
+}
+
+/**
+ * Check if text contains any diff markers.
+ * Returns the first marker found, or null if clean.
+ */
+export function findDiffMarkers(text: string): string | null {
+  for (const pattern of DIFF_MARKER_PATTERNS) {
+    const match = text.match(pattern);
+    if (match) {
+      return match[0].trim();
+    }
+  }
+  return null;
+}
+
+/**
+ * Remove stray diff markers from text.
+ * Use as a fallback when markers leak into output.
+ */
+export function sanitizeDiffMarkers(text: string): string {
+  let result = text;
+  // Remove standalone marker lines
+  result = result.replace(/^<<<<<<< SEARCH\s*\n?/gm, '');
+  result = result.replace(/^=======\s*\n?/gm, '');
+  result = result.replace(/^>>>>>>> REPLACE\s*\n?/gm, '');
+  // Clean up any double newlines created by removals
+  result = result.replace(/\n{3,}/g, '\n\n');
+  return result;
 }
 
 export interface ParsedEditResponse {
@@ -58,7 +94,11 @@ export function parseDiffs(text: string): DiffBlock[] {
   return blocks;
 }
 
-export function applyDiffs(code: string, diffs: DiffBlock[]): { code: string; applied: number; failed: string[] } {
+export function applyDiffs(
+  code: string,
+  diffs: DiffBlock[],
+  options: { sanitize?: boolean } = {},
+): { code: string; applied: number; failed: string[]; warning?: string } {
   let result = code;
   let applied = 0;
   const failed: string[] = [];
@@ -76,7 +116,20 @@ export function applyDiffs(code: string, diffs: DiffBlock[]): { code: string; ap
     }
   }
 
-  return { code: result, applied, failed };
+  // Check for stray diff markers in the result
+  const marker = findDiffMarkers(result);
+  let warning: string | undefined;
+
+  if (marker) {
+    if (options.sanitize) {
+      result = sanitizeDiffMarkers(result);
+      warning = `Removed stray diff marker "${marker}" from output`;
+    } else {
+      warning = `Output contains diff marker "${marker}" - the LLM may have generated a malformed response`;
+    }
+  }
+
+  return { code: result, applied, failed, warning };
 }
 
 export function hasDiffBlocks(text: string): boolean {

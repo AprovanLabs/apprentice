@@ -27,6 +27,52 @@ function generateMountId(): string {
   return `pw-mount-${Date.now()}-${++mountCounter}`;
 }
 
+type CreateElementFn = (...args: unknown[]) => unknown;
+type CreateRootFn = (el: HTMLElement) => {
+  render: (el: unknown) => void;
+  unmount?: () => void;
+};
+type RenderFn = (el: unknown, container: HTMLElement) => void;
+
+type Renderer =
+  | { kind: 'root'; createRoot: CreateRootFn }
+  | { kind: 'render'; render: RenderFn };
+
+function pickCreateElement(
+  globals: Array<Record<string, unknown>>,
+): CreateElementFn | null {
+  for (const obj of globals) {
+    const ce = obj?.createElement;
+    if (typeof ce === 'function') return ce as CreateElementFn;
+    const def = obj?.default as Record<string, unknown> | undefined;
+    if (def && typeof def.createElement === 'function') {
+      return def.createElement as CreateElementFn;
+    }
+  }
+  return null;
+}
+
+function pickRenderer(
+  globals: Array<Record<string, unknown>>,
+): Renderer | null {
+  for (const obj of globals) {
+    if (obj && typeof obj.createRoot === 'function') {
+      return { kind: 'root', createRoot: obj.createRoot as CreateRootFn };
+    }
+    if (obj && typeof obj.render === 'function') {
+      return { kind: 'render', render: obj.render as RenderFn };
+    }
+    const def = obj?.default as Record<string, unknown> | undefined;
+    if (def && typeof def.createRoot === 'function') {
+      return { kind: 'root', createRoot: def.createRoot as CreateRootFn };
+    }
+    if (def && typeof def.render === 'function') {
+      return { kind: 'render', render: def.render as RenderFn };
+    }
+  }
+  return null;
+}
+
 /**
  * Mount a widget in embedded mode (direct DOM injection)
  */
@@ -85,7 +131,8 @@ export async function mountEmbedded(
   // Convention: preload order matches globals order (react -> React, react-dom -> ReactDOM)
   preloadedModules.forEach((mod, index) => {
     if (globalNames[index]) {
-      win[globalNames[index]] = mod;
+      const name = globalNames[index];
+      win[name] = mod;
     }
   });
 
@@ -96,33 +143,18 @@ export async function mountEmbedded(
   // Import the module
   let moduleCleanup: (() => void) | undefined;
 
-  // Get React references from globals for rendering
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const React = win.React as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ReactDOMClient = win.ReactDOM as any;
+  const globalObjects = globalNames
+    .map((n) => win[n] as unknown)
+    .filter(Boolean) as Array<Record<string, unknown>>;
 
   try {
     const module = await import(/* webpackIgnore: true */ scriptUrl);
 
-    // Look for default export (component) or render function
-    if (typeof module.default === 'function') {
-      // React component - need to render it
-      const Component = module.default;
-
-      if (React && ReactDOMClient && 'createRoot' in ReactDOMClient) {
-        const root = ReactDOMClient.createRoot(container);
-        const element = React.createElement(Component, inputs);
-        root.render(element);
-        moduleCleanup = () => root.unmount();
-      } else {
-        // Fallback: just call the component as a function
-        const result = Component(inputs);
-        if (result instanceof HTMLElement) {
-          container.appendChild(result);
-        } else if (typeof result === 'string') {
-          container.innerHTML = result;
-        }
+    // Custom mount function takes priority
+    if (typeof module.mount === 'function') {
+      const result = await module.mount(container, inputs);
+      if (typeof result === 'function') {
+        moduleCleanup = result;
       }
     } else if (typeof module.render === 'function') {
       // Custom render function
@@ -130,11 +162,29 @@ export async function mountEmbedded(
       if (typeof result === 'function') {
         moduleCleanup = result;
       }
-    } else if (typeof module.mount === 'function') {
-      // Custom mount function
-      const result = await module.mount(container, inputs);
-      if (typeof result === 'function') {
-        moduleCleanup = result;
+    } else if (typeof module.default === 'function') {
+      // Default export component - render using framework
+      const Component = module.default;
+
+      const createElement = pickCreateElement(globalObjects);
+      const renderer = pickRenderer(globalObjects);
+
+      if (createElement && renderer?.kind === 'root') {
+        const root = renderer.createRoot(container);
+        root.render(createElement(Component, inputs));
+        if (typeof root.unmount === 'function') {
+          moduleCleanup = () => root.unmount!();
+        }
+      } else if (createElement && renderer?.kind === 'render') {
+        renderer.render(createElement(Component, inputs), container);
+      } else {
+        // No framework renderer - try calling as plain function
+        const result = Component(inputs);
+        if (result instanceof HTMLElement) {
+          container.appendChild(result);
+        } else if (typeof result === 'string') {
+          container.innerHTML = result;
+        }
       }
     }
   } finally {
@@ -166,6 +216,7 @@ export async function mountEmbedded(
     widget,
     mode: 'embedded',
     target,
+    inputs,
     unmount,
   };
 }
@@ -185,7 +236,7 @@ export async function reloadEmbedded(
   // Remount with new widget
   return mountEmbedded(
     widget,
-    { target: mounted.target, mode: 'embedded' },
+    { target: mounted.target, mode: 'embedded', inputs: mounted.inputs },
     image,
     proxy,
   );
