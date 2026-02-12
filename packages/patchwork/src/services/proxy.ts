@@ -3,7 +3,7 @@
 // Provides a backend-agnostic service proxy with caching.
 // The actual backend (UTCP, MCP, HTTP, etc.) is set via setServiceBackend().
 
-import type { ServiceResult, CacheEntry, CacheConfig } from './types.js';
+import type { ServiceResult, CacheEntry, CacheConfig } from './types';
 
 /**
  * Service backend interface - abstracts the actual service call mechanism

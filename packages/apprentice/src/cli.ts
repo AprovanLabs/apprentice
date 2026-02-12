@@ -9,7 +9,6 @@ import { indexCommand } from './commands/index';
 import { daemonCommand } from './commands/daemon';
 import { registerContextCommand } from './commands/context';
 import { runCommand } from './commands/run';
-import { createPatchworkCommand } from './commands/patchwork';
 
 program
   .name('apr')
@@ -290,6 +289,7 @@ indexerCommand
 
 // === PATCHWORK ===
 
-program.addCommand(createPatchworkCommand());
+// TODO: createPatchworkCommand is not yet implemented
+// program.addCommand(createPatchworkCommand());
 
 program.parse();
