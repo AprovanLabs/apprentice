@@ -8,7 +8,7 @@ MCP tools for searching, retrieving, executing, and logging content through the 
 
 ## Available MCP Tools
 
-### `apr_search` - Unified Search
+### `search` - Unified Search
 
 Search across events (command history) and assets (files, scripts, docs) with semantic matching.
 
@@ -46,7 +46,7 @@ filters: {
 
 **Related Context:** When `related: true`, results include `context.events`, `context.assets`, and `strategyUsed`.
 
-### `apr_get_asset` - Retrieve Asset
+### `get_asset` - Retrieve Asset
 
 ```
 id: string              # Asset ID (16-char hash from search results)
@@ -55,7 +55,7 @@ include_content?: bool  # Include file content (default: false)
 
 Content over 50KB truncated; binary content excluded.
 
-### `apr_run_asset` - Execute Asset
+### `run_asset` - Execute Asset
 
 ```
 id: string      # Asset ID from search results (16-char hash)
@@ -64,7 +64,7 @@ args?: string[] # Arguments to pass
 
 Returns `stdout`, `stderr`, `exit_code`, `duration_ms`, `event_id`. Supports .sh/.bash/.zsh/.py/.js/.ts. 30s timeout.
 
-### `apr_context_list` - List Contexts
+### `context_list` - List Contexts
 
 ```
 enabled_only?: bool  # Filter to enabled contexts only (default: true)
@@ -77,7 +77,7 @@ enabled_only?: bool  # Filter to enabled contexts only (default: true)
 3. **Narrow scope only with confidence** - Default `scope: "both"` catches cross-type context; premature narrowing misses insights
 4. **Leverage filters** - Use `shell.exit_code`, `asset.extension`, etc. for precision
 5. **Check asset content selectively** - Only include content when needed
-6. **Log your actions** - Use `apr_log_event` to record AI interactions
+6. **Log your actions** - Use `log_event` to record AI interactions
 
 ## Search Strategy
 

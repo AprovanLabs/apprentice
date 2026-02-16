@@ -51,12 +51,12 @@ Add to your VS Code `settings.json`:
 
 #### Available MCP Tools
 
-- `apr_search` - Unified search across events and assets (query, scope, limit, filters, since)
-- `apr_get_asset` - Retrieve a specific asset by ID
-- `apr_run_asset` - Execute an executable asset (script)
-- `apr_context_list` - List registered context folders
-- `apr_context_add` - Register a folder for indexing
-- `apr_log_event` - Record a custom event
+- `search` - Unified search across events and assets (query, scope, limit, filters, since)
+- `get_asset` - Retrieve a specific asset by ID
+- `run_asset` - Execute an executable asset (script)
+- `context_list` - List registered context folders
+- `context_add` - Register a folder for indexing
+- `log_event` - Record a custom event
 
 ## Building
 

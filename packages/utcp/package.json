@@ -18,7 +18,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@aprovan/utcp-http": "^1.1.1",
+    "@utcp/http": "^1.1.1",
     "@utcp/mcp": "^1.1.1",
     "@utcp/sdk": "^1.1.0",
     "@utcp/text": "^1.1.0"

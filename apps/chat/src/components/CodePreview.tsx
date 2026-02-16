@@ -1,15 +1,27 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Code, Eye, AlertCircle, Loader2, Pencil, RotateCcw, MessageSquare } from 'lucide-react';
-import type { Compiler, MountedWidget } from '@aprovan/patchwork-compiler';
+import type { Compiler, MountedWidget, Manifest } from '@aprovan/patchwork-compiler';
 import { DEV_SANDBOX } from '@aprovan/patchwork-compiler';
 import { EditModal, type CompileFn } from './edit';
 
 interface CodePreviewProps {
   code: string;
   compiler: Compiler | null;
+  /** Available service namespaces for widget calls */
+  services?: string[];
 }
 
-function useCodeCompiler(compiler: Compiler | null, code: string, enabled: boolean) {
+function createManifest(services?: string[]): Manifest {
+  return {
+    name: 'preview',
+    version: '1.0.0',
+    platform: 'browser',
+    image: '@aprovan/patchwork-shadcn',
+    services,
+  };
+}
+
+function useCodeCompiler(compiler: Compiler | null, code: string, enabled: boolean, services?: string[]) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -34,12 +46,7 @@ function useCodeCompiler(compiler: Compiler | null, code: string, enabled: boole
 
         const widget = await compiler.compile(
           code,
-          {
-            name: 'preview',
-            version: '1.0.0',
-            platform: 'browser',
-            image: '@aprovan/patchwork-shadcn',
-          },
+          createManifest(services),
           { typescript: true }
         );
 
@@ -50,9 +57,9 @@ function useCodeCompiler(compiler: Compiler | null, code: string, enabled: boole
         const mounted = await compiler.mount(widget, {
           target: containerRef.current,
           mode: 'embedded'
-          // mode: 'iframe',
           // Use DEV_SANDBOX in development for same-origin module loading
           // sandbox: import.meta.env.DEV ? DEV_SANDBOX : undefined,
+          // mode: 'iframe',
         });
 
         mountedRef.current = mounted;
@@ -76,12 +83,12 @@ function useCodeCompiler(compiler: Compiler | null, code: string, enabled: boole
         mountedRef.current = null;
       }
     };
-  }, [code, compiler, enabled]);
+  }, [code, compiler, enabled, services]);
 
   return { containerRef, loading, error };
 }
 
-export function CodePreview({ code: originalCode, compiler }: CodePreviewProps) {
+export function CodePreview({ code: originalCode, compiler, services }: CodePreviewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [currentCode, setCurrentCode] = useState(originalCode);
@@ -90,7 +97,8 @@ export function CodePreview({ code: originalCode, compiler }: CodePreviewProps) 
   const { containerRef, loading, error } = useCodeCompiler(
     compiler,
     currentCode,
-    showPreview && !isEditing
+    showPreview && !isEditing,
+    services
   );
 
   const compile: CompileFn = useCallback(
@@ -108,12 +116,7 @@ export function CodePreview({ code: originalCode, compiler }: CodePreviewProps) 
       try {
         await compiler.compile(
           code,
-          {
-            name: 'preview',
-            version: '1.0.0',
-            platform: 'browser',
-            image: '@aprovan/patchwork-shadcn',
-          },
+          createManifest(services),
           { typescript: true }
         );
         return { success: true };
@@ -128,7 +131,7 @@ export function CodePreview({ code: originalCode, compiler }: CodePreviewProps) 
         console.error = originalError;
       }
     },
-    [compiler]
+    [compiler, services]
   );
 
   const handleRevert = () => {
@@ -213,7 +216,7 @@ export function CodePreview({ code: originalCode, compiler }: CodePreviewProps) 
         }}
         originalCode={currentCode}
         compile={compile}
-        renderPreview={(code) => <ModalPreview code={code} compiler={compiler} />}
+        renderPreview={(code) => <ModalPreview code={code} compiler={compiler} services={services} />}
       />
     </>
   );
@@ -222,11 +225,13 @@ export function CodePreview({ code: originalCode, compiler }: CodePreviewProps) 
 function ModalPreview({
   code,
   compiler,
+  services,
 }: {
   code: string;
   compiler: Compiler | null;
+  services?: string[];
 }) {
-  const { containerRef, loading, error } = useCodeCompiler(compiler, code, true);
+  const { containerRef, loading, error } = useCodeCompiler(compiler, code, true, services);
 
   return (
     <>

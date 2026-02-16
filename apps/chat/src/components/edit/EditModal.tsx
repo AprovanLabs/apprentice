@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useCallback, type ReactNode } from 'react';
 import {
   Code,
   Eye,
@@ -12,6 +12,7 @@ import {
 import { MarkdownEditor } from '../MarkdownEditor';
 import { EditHistory } from './EditHistory';
 import { useEditSession, type UseEditSessionOptions } from './useEditSession';
+import { Bobbin, serializeChangesToYAML, type Change } from '@aprovan/bobbin';
 
 // Simple hash for React key to force re-render on code changes
 function hashCode(str: string): number {
@@ -44,14 +45,30 @@ export function EditModal({
 }: EditModalProps) {
   const [showPreview, setShowPreview] = useState(true);
   const [editInput, setEditInput] = useState('');
+  const [bobbinChanges, setBobbinChanges] = useState<Change[]>([]);
+  const [previewContainer, setPreviewContainer] = useState<HTMLDivElement | null>(null);
 
   const session = useEditSession(sessionOptions);
   const hasChanges = session.code !== session.originalCode;
 
+  const handleBobbinChanges = useCallback((changes: Change[]) => {
+    setBobbinChanges(changes);
+  }, []);
+
   const handleSubmit = () => {
-    if (!editInput.trim() || session.isApplying) return;
-    session.submitEdit(editInput);
+    if ((!editInput.trim() && bobbinChanges.length === 0) || session.isApplying) return;
+    
+    // Convert bobbin changes to YAML context
+    let promptWithContext = editInput;
+    
+    if (bobbinChanges.length > 0) {
+      const bobbinYaml = serializeChangesToYAML(bobbinChanges, []);
+      promptWithContext = `${editInput}\n\n---\nVisual Changes (apply these styles/modifications):\n\`\`\`yaml\n${bobbinYaml}\n\`\`\``;
+    }
+    
+    session.submitEdit(promptWithContext);
     setEditInput('');
+    setBobbinChanges([]);
   };
 
   const handleClose = () => {
@@ -105,7 +122,7 @@ export function EditModal({
 
         <div className="flex-1 min-h-0 border-b-2 overflow-auto">
           {showPreview ? (
-            <div className="bg-white h-full">
+            <div className="bg-white h-full relative" ref={setPreviewContainer}>
               {previewError && renderError ? (
                 renderError(previewError)
               ) : previewError ? (
@@ -123,6 +140,15 @@ export function EditModal({
               ) : (
                 <div className="p-4" key={hashCode(session.code)}>{renderPreview(session.code)}</div>
               )}
+              {/* Bobbin visual editor */}
+              <Bobbin
+                container={previewContainer}
+                pillContainer={previewContainer}
+                defaultActive={false}
+                showInspector
+                onChanges={handleBobbinChanges}
+                exclude={['.bobbin-pill', '[data-bobbin]']}
+              />
             </div>
           ) : (
             <div className="p-4 bg-muted/10 h-full overflow-auto">
@@ -148,6 +174,18 @@ export function EditModal({
           </div>
         )}
 
+        {bobbinChanges.length > 0 && (
+          <div className="px-4 py-2 bg-blue-50 text-blue-700 text-sm flex items-center gap-2 border-t">
+            <span>{bobbinChanges.length} visual change{bobbinChanges.length !== 1 ? 's' : ''}</span>
+            <button
+              onClick={() => setBobbinChanges([])}
+              className="text-xs underline hover:no-underline"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
         <div className="p-4 border-t-2 bg-primary/5 flex gap-2 items-end">
           <div className="flex-1">
             <MarkdownEditor
@@ -160,7 +198,7 @@ export function EditModal({
           </div>
           <button
             onClick={handleSubmit}
-            disabled={!editInput.trim() || session.isApplying}
+            disabled={(!editInput.trim() && bobbinChanges.length === 0) || session.isApplying}
             className="px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1 shrink-0"
           >
             {session.isApplying ? (

@@ -39,7 +39,7 @@ export function createMcpServer(): Server {
     return {
       tools: [
         {
-          name: 'apr_search',
+          name: 'search',
           description:
             'Unified search across events and assets. Search command history, scripts, docs, and other indexed content.',
           inputSchema: {
@@ -116,7 +116,7 @@ export function createMcpServer(): Server {
           },
         },
         {
-          name: 'apr_get_asset',
+          name: 'get_asset',
           description:
             'Retrieve a specific asset by ID, optionally including its content.',
           inputSchema: {
@@ -136,7 +136,7 @@ export function createMcpServer(): Server {
           },
         },
         {
-          name: 'apr_run_asset',
+          name: 'run_asset',
           description:
             'Execute an executable asset (script) with provided arguments.',
           inputSchema: {
@@ -157,7 +157,7 @@ export function createMcpServer(): Server {
           },
         },
         {
-          name: 'apr_context_list',
+          name: 'context_list',
           description:
             'List all registered contexts (indexed folders) with their status.',
           inputSchema: {
@@ -172,7 +172,7 @@ export function createMcpServer(): Server {
           },
         },
         {
-          name: 'apr_context_add',
+          name: 'context_add',
           description: 'Register a new folder as a context for indexing.',
           inputSchema: {
             type: 'object',
@@ -200,7 +200,7 @@ export function createMcpServer(): Server {
           },
         },
         {
-          name: 'apr_log_event',
+          name: 'log_event',
           description: 'Record a custom event with optional asset relations.',
           inputSchema: {
             type: 'object',
@@ -240,17 +240,17 @@ export function createMcpServer(): Server {
 
     try {
       switch (name) {
-        case 'apr_search':
+        case 'search':
           return await handleSearch(args as unknown as SearchArgs);
-        case 'apr_get_asset':
+        case 'get_asset':
           return await handleGetAsset(args as unknown as GetAssetArgs);
-        case 'apr_run_asset':
+        case 'run_asset':
           return await handleRunAsset(args as unknown as RunAssetArgs);
-        case 'apr_context_list':
+        case 'context_list':
           return await handleContextList(args as unknown as ContextListArgs);
-        case 'apr_context_add':
+        case 'context_add':
           return await handleContextAdd(args as unknown as ContextAddArgs);
-        case 'apr_log_event':
+        case 'log_event':
           return await handleLogEvent(args as unknown as LogEventArgs);
         default:
           throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);

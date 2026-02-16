@@ -249,6 +249,19 @@ function generateIframeContent(
 
     // Signal ready to receive widget code
     window.parent.postMessage({ type: 'widget-ready' }, '*');
+
+    // Set up ResizeObserver to report body size changes to parent
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        window.parent.postMessage({ 
+          type: 'widget-resize', 
+          width: Math.ceil(width), 
+          height: Math.ceil(height) 
+        }, '*');
+      }
+    });
+    resizeObserver.observe(document.body);
   `;
 
   return `<!DOCTYPE html>
@@ -302,7 +315,7 @@ export async function mountIframe(
   const iframe = document.createElement('iframe');
   iframe.id = mountId;
   iframe.className = 'patchwork-widget patchwork-iframe';
-  iframe.style.cssText = 'width: 100%; height: 100%; border: none;';
+  iframe.style.cssText = 'width: 100%; border: none; overflow: hidden;';
   iframe.sandbox.add(...sandbox);
 
   // Register with bridge before loading content
@@ -318,6 +331,18 @@ export async function mountIframe(
 
   // Append to target
   target.appendChild(iframe);
+
+  // Handle resize messages from iframe
+  const handleResize = (event: MessageEvent) => {
+    if (event.source !== iframe.contentWindow) return;
+    if (event.data?.type === 'widget-resize') {
+      const { height } = event.data;
+      if (typeof height === 'number' && height > 0) {
+        iframe.style.height = `${height}px`;
+      }
+    }
+  };
+  window.addEventListener('message', handleResize);
 
   // Wait for iframe to signal ready, then send widget code
   await new Promise<void>((resolve, reject) => {
@@ -354,6 +379,7 @@ export async function mountIframe(
 
   // Create unmount function
   const unmount = () => {
+    window.removeEventListener('message', handleResize);
     bridge.unregisterIframe(iframe);
     iframe.remove();
   };

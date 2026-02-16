@@ -8,10 +8,13 @@ import {
   type Tool,
 } from 'ai';
 import { PATCHWORK_PROMPT, EDIT_PROMPT } from '../prompts.js';
+import type { ServiceRegistry } from './services.js';
 
 export interface RouteContext {
   copilotProxyUrl: string;
   tools: Record<string, Tool>;
+  registry: ServiceRegistry;
+  servicesPrompt: string;
   log: (...args: unknown[]) => void;
 }
 
@@ -57,7 +60,9 @@ export async function handleChat(
     model: provider('claude-sonnet-4'),
     system: `---\npatchwork:\n  compilers: ${
       (metadata?.patchwork?.compilers ?? []).join(',') ?? '[]'
-    }\n---\n\n${PATCHWORK_PROMPT}`,
+    }\n  services: ${ctx.registry
+      .getNamespaces()
+      .join(',')}\n---\n\n${PATCHWORK_PROMPT}\n\n${ctx.servicesPrompt}`,
     messages: await convertToModelMessages(normalizedMessages),
     stopWhen: stepCountIs(5),
     tools: ctx.tools,

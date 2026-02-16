@@ -30,7 +30,7 @@ export function createHttpServiceProxy(proxyUrl: string): ServiceProxy {
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ args }),
+        body: JSON.stringify({ args: args[0] ?? {} }),
       });
 
       if (!response.ok) {

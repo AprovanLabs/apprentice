@@ -26,15 +26,23 @@ import { createCompiler, type Compiler } from '@aprovan/patchwork-compiler';
 import { extractCodeBlocks } from '@/lib/code-extractor';
 import { CodePreview } from '@/components/CodePreview';
 import { MarkdownEditor } from '@/components/MarkdownEditor';
+import { ServicesInspector, type ServiceInfo } from '@/components/ServicesInspector';
 
 const APROVAN_LOGO =
   'https://raw.githubusercontent.com/AprovanLabs/aprovan.com/main/docs/assets/social-labs.png';
 
-const CompilerContext = createContext<Compiler | null>(null);
-const useCompiler = () => useContext(CompilerContext);
+interface PatchworkContext {
+  compiler: Compiler | null;
+  namespaces: string[];
+}
+
+const PatchworkCtx = createContext<PatchworkContext>({ compiler: null, namespaces: [] });
+const useCompiler = () => useContext(PatchworkCtx).compiler;
+const useServices = () => useContext(PatchworkCtx).namespaces;
 
 function TextPart({ text, isUser }: { text: string; isUser: boolean }) {
   const compiler = useCompiler();
+  const services = useServices();
 
   if (isUser) {
     return (
@@ -50,7 +58,7 @@ function TextPart({ text, isUser }: { text: string; isUser: boolean }) {
     <div className="prose prose-sm dark:prose-invert prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-pre:my-2 prose-code:before:content-none prose-code:after:content-none">
       {parts.map((part, index) => {
         if (part.type === 'code') {
-          return <CodePreview key={index} code={part.content} compiler={compiler} />;
+          return <CodePreview key={index} code={part.content} compiler={compiler} services={services} />;
         }
         return <Markdown key={index} remarkPlugins={[remarkGfm]}>{part.content}</Markdown>;
       })}
@@ -270,11 +278,29 @@ const IMAGE_CDN_URL = import.meta.env.DEV ? '/_local-packages' : 'https://esm.sh
 const WIDGET_CDN_URL = 'https://esm.sh'; // Widget imports need esm.sh bundles like @packagedcn
 
 export default function ChatPage() {
-  const [input, setInput] = useState('What\'s the weather in Paris, France like?');
+  const [input, setInput] = useState('What\'s the weather in Houston, Texas like?');
   const [compiler, setCompiler] = useState<Compiler | null>(null);
+  const [namespaces, setNamespaces] = useState<string[]>([]);
+  const [services, setServices] = useState<ServiceInfo[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Fetch available services
+    fetch('/api/services')
+      .then((res) => res.json())
+      .then((data) => {
+        setNamespaces(data.namespaces ?? []);
+        // In dev mode, also store full service details for inspection
+        if (import.meta.env.DEV && data.services) {
+          setServices(data.services);
+        }
+      })
+      .catch(() => {
+        setNamespaces([]);
+        setServices([]);
+      });
+
+    // Initialize compiler
     createCompiler({ 
       image: IMAGE_SPEC, 
       proxyUrl: PROXY_URL, 
@@ -284,6 +310,8 @@ export default function ChatPage() {
       .then(setCompiler)
       .catch(console.error);
   }, []);
+
+  const patchworkCtx = useMemo(() => ({ compiler, namespaces }), [compiler, namespaces]);
 
   const transport = useMemo(
     () =>
@@ -316,7 +344,7 @@ export default function ChatPage() {
   }, [messages]);
 
   return (
-    <CompilerContext.Provider value={compiler}>
+    <PatchworkCtx.Provider value={patchworkCtx}>
       <div className="flex flex-col h-screen max-w-4xl mx-auto p-4">
         <Card className="flex-1 flex flex-col min-h-0 overflow-hidden border">
           <CardHeader className="border-b py-3">
@@ -327,6 +355,7 @@ export default function ChatPage() {
                 className="h-8 w-8 rounded-full"
               />
               <span className="text-lg">patchwork</span>
+              <ServicesInspector namespaces={namespaces} services={services} />
             </CardTitle>
           </CardHeader>
 
@@ -415,6 +444,6 @@ export default function ChatPage() {
           </div>
         </Card>
       </div>
-    </CompilerContext.Provider>
+    </PatchworkCtx.Provider>
   );
 }

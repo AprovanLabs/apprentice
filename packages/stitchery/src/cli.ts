@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import path from 'path';
+import fs from 'fs';
 import { Command } from 'commander';
 import { createStitcheryServer } from './server/index.js';
 
@@ -24,6 +25,7 @@ program
     '--mcp <servers...>',
     'MCP server commands (format: name:command:arg1,arg2)',
   )
+  .option('--utcp-config <path>', 'Load UTCP configuration from JSON file')
   .option(
     '--local-package <packages...>',
     'Local package overrides (format: name:path)',
@@ -51,12 +53,33 @@ program
       localPackages[name] = path.resolve(process.cwd(), pkgPath);
     }
 
+    // Load UTCP config from file if specified
+    let utcpConfig;
+    if (options.utcpConfig) {
+      const utcpPath = path.resolve(process.cwd(), options.utcpConfig);
+      if (!fs.existsSync(utcpPath)) {
+        console.error(`UTCP config file not found: ${utcpPath}`);
+        process.exit(1);
+      }
+      try {
+        const content = fs.readFileSync(utcpPath, 'utf-8');
+        utcpConfig = JSON.parse(content);
+        if (options.verbose) {
+          console.log('[stitchery] Loaded UTCP config from:', utcpPath);
+        }
+      } catch (err) {
+        console.error(`Failed to parse UTCP config: ${err}`);
+        process.exit(1);
+      }
+    }
+
     const server = await createStitcheryServer({
       port: parseInt(options.port, 10),
       host: options.host,
       copilotProxyUrl: options.copilotProxyUrl,
       mcpServers,
       localPackages,
+      utcp: utcpConfig,
       verbose: options.verbose,
     });
 

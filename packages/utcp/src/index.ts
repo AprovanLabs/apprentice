@@ -5,7 +5,7 @@
  * Provides a ServiceBackend implementation that routes service calls through UTCP.
  */
 
-import '@aprovan/utcp-http';
+import '@utcp/http';
 import '@utcp/text';
 import '@utcp/mcp';
 
@@ -62,6 +62,13 @@ export async function createUtcpBackend(
 ): Promise<{
   backend: ServiceBackend;
   client: UtcpClient;
+  toolInfos: Array<{
+    name: string;
+    namespace: string;
+    procedure: string;
+    description?: string;
+    parameters?: Record<string, unknown>;
+  }>;
 }> {
   const utcpConfig = new UtcpClientConfigSerializer().validateDict(
     utcpOptions as unknown as Record<string, unknown>,
@@ -73,21 +80,52 @@ export async function createUtcpBackend(
     string,
     (args: Record<string, unknown>) => Promise<unknown>
   >();
+  const toolInfos: Array<{
+    name: string;
+    namespace: string;
+    procedure: string;
+    description?: string;
+    parameters?: Record<string, unknown>;
+  }> = [];
 
-  // Access internal getTools method
+  // Access internal getTools method - Tool has name, description, inputs, outputs, tags
   const tools = await (
-    client as { getTools(): Promise<Array<{ name: string }>> }
+    client as {
+      getTools(): Promise<
+        Array<{
+          name: string;
+          description?: string;
+          inputs?: Record<string, unknown>;
+        }>
+      >;
+    }
   )['getTools']();
 
   for (const tool of tools) {
     if (!tool.name.includes('.')) continue;
 
     const [namespace, ...parts] = tool.name.split('.');
-    const key = `${sanitizeIdentifier(namespace!)}.${parts
-      .map(sanitizeIdentifier)
-      .join('_')}`;
+    const sanitizedNamespace = sanitizeIdentifier(namespace!);
+    let procedure = parts.map(sanitizeIdentifier).join('_');
+
+    // Strip duplicate namespace prefix from procedure names
+    // e.g., "weather_get_forecast" -> "get_forecast" when namespace is "weather"
+    const namespacePrefix = `${sanitizedNamespace}_`;
+    if (procedure.startsWith(namespacePrefix)) {
+      procedure = procedure.slice(namespacePrefix.length);
+    }
+
+    const key = `${sanitizedNamespace}.${procedure}`;
 
     toolRegistry.set(key, client.callTool.bind(client, tool.name));
+
+    toolInfos.push({
+      name: key,
+      namespace: sanitizedNamespace,
+      procedure,
+      description: tool.description,
+      parameters: tool.inputs,
+    });
   }
 
   const backend: ServiceBackend = {
@@ -109,7 +147,7 @@ export async function createUtcpBackend(
     },
   };
 
-  return { backend, client };
+  return { backend, client, toolInfos };
 }
 
 export type { ServiceBackend };
