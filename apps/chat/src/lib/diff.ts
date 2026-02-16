@@ -7,10 +7,99 @@ const DIFF_MARKER_PATTERNS = [
   /^>>>>>>> REPLACE\s*$/m,
 ];
 
+/**
+ * Regex to match code fence opening with language and optional attributes.
+ * Format: triple-backtick + lang + attr="value" attr2="value2"
+ * Captures: [1]=language, [2]=attributes string
+ */
+const CODE_FENCE_REGEX = /^```(\w*)\s*((?:[a-zA-Z_][\w-]*="[^"]*"\s*)*)\s*$/;
+
+/**
+ * Regex to match individual key="value" attributes.
+ */
+const ATTRIBUTE_REGEX = /([a-zA-Z_][\w-]*)="([^"]*)"/g;
+
+export interface CodeBlockAttributes {
+  /** Progress note for UI display (optional but encouraged, comes first) */
+  note?: string;
+  /** Virtual file path for multi-file generation (uses \@/ prefix) */
+  path?: string;
+  /** Additional arbitrary attributes */
+  [key: string]: string | undefined;
+}
+
+export interface CodeBlock {
+  /** Language identifier (e.g., tsx, json, diff) */
+  language: string;
+  /** Parsed attributes from the fence line */
+  attributes: CodeBlockAttributes;
+  /** Raw content between the fence markers */
+  content: string;
+}
+
 export interface DiffBlock {
   search: string;
   replace: string;
-  progressNote?: string;
+  /** Progress note from the code fence attributes */
+  note?: string;
+  /** Target file path for multi-file edits */
+  path?: string;
+}
+
+/**
+ * Parse attributes from a code fence line.
+ *
+ * Example input: 'note="Adding handler" path="\@/components/Button.tsx"'
+ *
+ * Returns: an object with note, path, and any other attributes
+ */
+export function parseCodeBlockAttributes(attrString: string): CodeBlockAttributes {
+  const attrs: CodeBlockAttributes = {};
+  if (!attrString) return attrs;
+
+  const regex = new RegExp(ATTRIBUTE_REGEX.source, 'g');
+  let match;
+  while ((match = regex.exec(attrString)) !== null) {
+    attrs[match[1]] = match[2];
+  }
+  return attrs;
+}
+
+/**
+ * Parse all code blocks from text, extracting language and attributes.
+ * Returns blocks in order of appearance.
+ */
+export function parseCodeBlocks(text: string): CodeBlock[] {
+  const blocks: CodeBlock[] = [];
+  const lines = text.split('\n');
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const fenceMatch = line.match(CODE_FENCE_REGEX);
+
+    if (fenceMatch) {
+      const language = fenceMatch[1] || '';
+      const attributes = parseCodeBlockAttributes(fenceMatch[2]);
+      const contentLines: string[] = [];
+      i++; // Move past opening fence
+
+      // Collect content until closing fence
+      while (i < lines.length && !lines[i].match(/^```\s*$/)) {
+        contentLines.push(lines[i]);
+        i++;
+      }
+
+      blocks.push({
+        language,
+        attributes,
+        content: contentLines.join('\n'),
+      });
+    }
+    i++;
+  }
+
+  return blocks;
 }
 
 /**
@@ -43,54 +132,93 @@ export function sanitizeDiffMarkers(text: string): string {
 }
 
 export interface ParsedEditResponse {
+  /** Progress notes extracted from code block attributes (in order of appearance) */
   progressNotes: string[];
+  /** Parsed diff blocks with their attributes */
   diffs: DiffBlock[];
+  /** Summary markdown text (content outside of code blocks) */
   summary: string;
 }
 
 /**
  * Parse progress notes and diffs from an edit response.
- * Format expected:
- * `[note] Progress note text`
- * followed by `SEARCH`/`REPLACE` diff blocks.
- *
- * Summary markdown at the end.
+ * 
+ * New format uses tagged attributes on code fences:
+ * ```diff note="Adding handler" path="@/components/Button.tsx"
+ * <<<<<<< SEARCH
+ * exact code
+ * =======
+ * replacement
+ * >>>>>>> REPLACE
+ * ```
+ * 
+ * Summary markdown is everything outside of code blocks.
  */
 export function parseEditResponse(text: string): ParsedEditResponse {
   const progressNotes: string[] = [];
   const diffs: DiffBlock[] = [];
-  
-  // Match progress notes: [note] followed by text until diff block or another note
-  const noteRegex = /\[note\]\s*([^\n]+)/g;
-  let noteMatch;
-  while ((noteMatch = noteRegex.exec(text)) !== null) {
-    progressNotes.push(noteMatch[1].trim());
+
+  // Parse all code blocks to extract notes and diffs
+  const codeBlocks = parseCodeBlocks(text);
+
+  for (const block of codeBlocks) {
+    // Collect progress notes from any code block with a note attribute
+    if (block.attributes.note) {
+      progressNotes.push(block.attributes.note);
+    }
+
+    // Check if this block contains a diff
+    const diffMatch = block.content.match(
+      /<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n>>>>>>> REPLACE/
+    );
+    if (diffMatch) {
+      diffs.push({
+        note: block.attributes.note,
+        path: block.attributes.path,
+        search: diffMatch[1],
+        replace: diffMatch[2],
+      });
+    }
   }
-  
-  // Parse diff blocks with their associated progress notes
-  const diffBlockRegex = /(?:\[note\]\s*([^\n]+)\n)?<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n>>>>>>> REPLACE/g;
-  let match;
-  while ((match = diffBlockRegex.exec(text)) !== null) {
-    diffs.push({
-      progressNote: match[1]?.trim(),
-      search: match[2],
-      replace: match[3],
-    });
-  }
-  
-  // Extract summary: everything after the last diff block (if any), excluding notes
+
+  // Extract summary: everything outside of code blocks
   const summary = extractSummary(text);
-  
+
   return { progressNotes, diffs, summary };
 }
 
+/**
+ * Parse diff blocks from text, extracting attributes from code fences.
+ * Supports both fenced code blocks with attributes and raw diff markers.
+ */
 export function parseDiffs(text: string): DiffBlock[] {
   const blocks: DiffBlock[] = [];
-  const regex = new RegExp(DIFF_BLOCK_REGEX.source, 'g');
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    blocks.push({ search: match[1], replace: match[2] });
+
+  // First, try to parse from code blocks with attributes
+  const codeBlocks = parseCodeBlocks(text);
+  for (const block of codeBlocks) {
+    const diffMatch = block.content.match(
+      /<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n>>>>>>> REPLACE/
+    );
+    if (diffMatch) {
+      blocks.push({
+        note: block.attributes.note,
+        path: block.attributes.path,
+        search: diffMatch[1],
+        replace: diffMatch[2],
+      });
+    }
   }
+
+  // If no fenced diffs found, fall back to raw diff markers (legacy support)
+  if (blocks.length === 0) {
+    const regex = new RegExp(DIFF_BLOCK_REGEX.source, 'g');
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      blocks.push({ search: match[1], replace: match[2] });
+    }
+  }
+
   return blocks;
 }
 
@@ -141,23 +269,26 @@ export function extractTextWithoutDiffs(text: string): string {
 }
 
 /**
+ * Regex to match complete code blocks (with optional attributes) for removal.
+ * Matches triple-backtick fenced code with language and attributes.
+ */
+const CODE_BLOCK_FULL_REGEX = /```\w*(?:\s+[a-zA-Z_][\w-]*="[^"]*")*\s*\n[\s\S]*?\n```/g;
+
+/**
  * Extract the summary markdown from an edit response.
- * Removes diff blocks, progress notes, empty code blocks, and any leading/trailing whitespace.
+ * Removes code blocks (with their attributes), and any leading/trailing whitespace.
+ * Preserves regular markdown prose outside of code blocks.
  */
 export function extractSummary(text: string): string {
-  // Remove all diff blocks
-  let summary = text.replace(DIFF_BLOCK_REGEX, '');
-  // Remove progress notes
-  summary = summary.replace(/\[note\]\s*[^\n]+\n?/g, '');
-  // Remove empty or near-empty code blocks (```...``` with only whitespace/newlines)
-  summary = summary.replace(/```[a-z]*\n?\s*```/gi, '');
+  // Remove complete code blocks (including those with attributes)
+  let summary = text.replace(CODE_BLOCK_FULL_REGEX, '');
   // Remove stray diff fence markers that might be left over
   summary = summary.replace(/^<<<<<<< SEARCH\s*$/gm, '');
   summary = summary.replace(/^=======\s*$/gm, '');
   summary = summary.replace(/^>>>>>>> REPLACE\s*$/gm, '');
   // Remove standalone ``` markers (not part of a code block)
-  summary = summary.replace(/^```[a-z]*\s*$/gm, '');
-  // Clean up multiple newlines (2+ becomes 2) and trim
-  summary = summary.replace(/\n{2,}/g, '\n\n').trimStart().trim();
+  summary = summary.replace(/^```[\w]*(?:\s+[a-zA-Z_][\w-]*="[^"]*")*\s*$/gm, '');
+  // Clean up multiple newlines (3+ becomes 2) and trim
+  summary = summary.replace(/\n{3,}/g, '\n\n').trim();
   return summary;
 }

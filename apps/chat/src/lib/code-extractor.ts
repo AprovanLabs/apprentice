@@ -1,19 +1,42 @@
-// Matches fenced code blocks: ```language\n...content...```
-// Captures: [1] = language (optional), [2] = content
-const CODE_BLOCK_REGEX = /```([a-zA-Z0-9_+-]*)\n([\s\S]*?)```/g;
+// Matches fenced code blocks with optional attributes: ```language attr="value"\n...content...```
+// Captures: [1] = language (optional), [2] = attributes (optional), [3] = content
+const CODE_BLOCK_REGEX = /```([a-zA-Z0-9_+-]*)((?:\s+[a-zA-Z_][\w-]*="[^"]*")*)\s*\n([\s\S]*?)```/g;
 
 // Matches an unclosed code block at the end (streaming case)
-const UNCLOSED_BLOCK_REGEX = /```([a-zA-Z0-9_+-]*)\n([\s\S]*)$/;
+const UNCLOSED_BLOCK_REGEX = /```([a-zA-Z0-9_+-]*)((?:\s+[a-zA-Z_][\w-]*="[^"]*")*)\s*\n([\s\S]*)$/;
+
+// Parse attributes from string like: note="value" path="@/foo.tsx"
+const ATTRIBUTE_REGEX = /([a-zA-Z_][\w-]*)="([^"]*)"/g;
 
 export type TextPart = { type: 'text'; content: string };
-export type CodePart = { type: 'code' | string; content: string; language: 'jsx' | 'tsx' | string };
-export type ParsedPart = TextPart | CodePart | CodePart;
+export type CodePart = { 
+  type: 'code' | string; 
+  content: string; 
+  language: 'jsx' | 'tsx' | string;
+  attributes?: Record<string, string>;
+};
+export type ParsedPart = TextPart | CodePart;
 
 export interface ExtractOptions {
   /** Only extract these languages (default: all) */
   filterLanguages?: Set<string>;
   /** Include unclosed code blocks at the end (for streaming) */
   includeUnclosed?: boolean;
+}
+
+/**
+ * Parse attributes string into key-value pairs.
+ */
+function parseAttributes(attrString: string): Record<string, string> {
+  const attrs: Record<string, string> = {};
+  if (!attrString) return attrs;
+  
+  const regex = new RegExp(ATTRIBUTE_REGEX.source, 'g');
+  let match;
+  while ((match = regex.exec(attrString)) !== null) {
+    attrs[match[1]] = match[2];
+  }
+  return attrs;
 }
 
 /**
@@ -28,19 +51,26 @@ export function extractCodeBlocks(
   let lastIndex = 0;
 
   // First pass: find all code blocks and track their positions
-  const allMatches: Array<{ match: RegExpExecArray; language: string; content: string; included: boolean }> = [];
+  const allMatches: Array<{ 
+    match: RegExpExecArray; 
+    language: string; 
+    content: string; 
+    attributes: Record<string, string>;
+    included: boolean;
+  }> = [];
   const regex = new RegExp(CODE_BLOCK_REGEX.source, 'g');
   let match;
 
   while ((match = regex.exec(text)) !== null) {
     const language = match[1]?.toLowerCase() || '';
-    const content = match[2];
+    const attributes = parseAttributes(match[2] || '');
+    const content = match[3];
     const included = !filterLanguages || filterLanguages.has(language);
-    allMatches.push({ match, language, content, included });
+    allMatches.push({ match, language, content, attributes, included });
   }
 
   // Process matches in order
-  for (const { match, language, content, included } of allMatches) {
+  for (const { match, language, content, attributes, included } of allMatches) {
     // Add preceding text (excluding any skipped code blocks)
     if (match.index > lastIndex) {
       const textBefore = text.slice(lastIndex, match.index);
@@ -54,7 +84,7 @@ export function extractCodeBlocks(
 
     // Only add the block if it passes the filter
     if (included) {
-      parts.push({ type: 'code', content, language });
+      parts.push({ type: 'code', content, language, attributes });
     }
   }
 
@@ -64,7 +94,8 @@ export function extractCodeBlocks(
     const unclosedMatch = remainingText.match(UNCLOSED_BLOCK_REGEX);
     if (unclosedMatch) {
       const language = unclosedMatch[1]?.toLowerCase() || '';
-      const content = unclosedMatch[2];
+      const attributes = parseAttributes(unclosedMatch[2] || '');
+      const content = unclosedMatch[3];
       const included = !filterLanguages || filterLanguages.has(language);
       
       // Add text before the unclosed block
@@ -77,7 +108,7 @@ export function extractCodeBlocks(
       }
 
       if (included) {
-        parts.push({ type: 'code', content, language });
+        parts.push({ type: 'code', content, language, attributes });
       }
       lastIndex = text.length; // Mark all text as processed
     }

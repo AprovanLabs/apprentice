@@ -77,14 +77,13 @@ async function streamResponse(
       fullText += decoder.decode(result.value, { stream: true });
 
       if (onProgress) {
-        // Only emit notes that are followed by a diff block fence, which confirms the note is complete.
-        // This prevents emitting partial notes as they stream in character-by-character.
-        // Allow any whitespace (including multiple newlines) between the note and fence.
-        const noteWithFenceRegex =
-          /\[note\]\s*([^\n]+)\n\s*```?\s*\n?<<<<<<< SEARCH|\[note\]\s*([^\n]+)\n\s*<<<<<<< SEARCH/g;
+        // Extract notes from code fence attributes as they stream in.
+        // Format: ```lang note="description" path="@/file.tsx"
+        // Match complete attribute to avoid emitting partial notes.
+        const noteAttrRegex = /```\w*\s+note="([^"]+)"/g;
         let match;
-        while ((match = noteWithFenceRegex.exec(fullText)) !== null) {
-          const note = (match[1] || match[2]).trim();
+        while ((match = noteAttrRegex.exec(fullText)) !== null) {
+          const note = match[1].trim();
           if (!emittedNotes.has(note)) {
             emittedNotes.add(note);
             onProgress(note);
