@@ -60,7 +60,11 @@ export function parseCodeBlockAttributes(attrString: string): CodeBlockAttribute
   const regex = new RegExp(ATTRIBUTE_REGEX.source, 'g');
   let match;
   while ((match = regex.exec(attrString)) !== null) {
-    attrs[match[1]] = match[2];
+    const key = match[1];
+    const value = match[2];
+    if (key && value !== undefined) {
+      attrs[key] = value;
+    }
   }
   return attrs;
 }
@@ -76,17 +80,25 @@ export function parseCodeBlocks(text: string): CodeBlock[] {
 
   while (i < lines.length) {
     const line = lines[i];
+    if (!line) {
+      i++;
+      continue;
+    }
     const fenceMatch = line.match(CODE_FENCE_REGEX);
 
     if (fenceMatch) {
       const language = fenceMatch[1] || '';
-      const attributes = parseCodeBlockAttributes(fenceMatch[2]);
+      const attributes = parseCodeBlockAttributes(fenceMatch[2] ?? '');
       const contentLines: string[] = [];
       i++; // Move past opening fence
 
       // Collect content until closing fence
-      while (i < lines.length && !lines[i].match(/^```\s*$/)) {
-        contentLines.push(lines[i]);
+      while (i < lines.length) {
+        const currentLine = lines[i];
+        if (currentLine !== undefined && currentLine.match(/^```\s*$/)) {
+          break;
+        }
+        contentLines.push(currentLine ?? '');
         i++;
       }
 
@@ -171,7 +183,7 @@ export function parseEditResponse(text: string): ParsedEditResponse {
     const diffMatch = block.content.match(
       /<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n>>>>>>> REPLACE/
     );
-    if (diffMatch) {
+    if (diffMatch && diffMatch[1] !== undefined && diffMatch[2] !== undefined) {
       diffs.push({
         note: block.attributes.note,
         path: block.attributes.path,
@@ -200,7 +212,7 @@ export function parseDiffs(text: string): DiffBlock[] {
     const diffMatch = block.content.match(
       /<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n>>>>>>> REPLACE/
     );
-    if (diffMatch) {
+    if (diffMatch && diffMatch[1] !== undefined && diffMatch[2] !== undefined) {
       blocks.push({
         note: block.attributes.note,
         path: block.attributes.path,
@@ -215,7 +227,9 @@ export function parseDiffs(text: string): DiffBlock[] {
     const regex = new RegExp(DIFF_BLOCK_REGEX.source, 'g');
     let match;
     while ((match = regex.exec(text)) !== null) {
-      blocks.push({ search: match[1], replace: match[2] });
+      if (match[1] !== undefined && match[2] !== undefined) {
+        blocks.push({ search: match[1], replace: match[2] });
+      }
     }
   }
 

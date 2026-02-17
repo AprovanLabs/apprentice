@@ -23,10 +23,13 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { UIMessage } from 'ai';
 import { createCompiler, type Compiler } from '@aprovan/patchwork-compiler';
-import { extractCodeBlocks } from '@/lib/code-extractor';
-import { CodePreview } from '@/components/CodePreview';
-import { MarkdownEditor } from '@/components/MarkdownEditor';
-import { ServicesInspector, type ServiceInfo } from '@/components/ServicesInspector';
+import {
+  extractCodeBlocks,
+  CodePreview,
+  MarkdownEditor,
+  ServicesInspector,
+  type ServiceInfo,
+} from '@aprovan/patchwork-editor';
 
 const APROVAN_LOGO =
   'https://raw.githubusercontent.com/AprovanLabs/aprovan.com/main/docs/assets/social-labs.png';

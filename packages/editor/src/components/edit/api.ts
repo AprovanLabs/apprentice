@@ -1,4 +1,4 @@
-import { applyDiffs, hasDiffBlocks, parseEditResponse } from '@/lib/diff';
+import { applyDiffs, hasDiffBlocks, parseEditResponse } from '../../lib/diff';
 import type { EditRequest, EditResponse } from './types';
 
 export interface EditApiOptions {
@@ -83,10 +83,13 @@ async function streamResponse(
         const noteAttrRegex = /```\w*\s+note="([^"]+)"/g;
         let match;
         while ((match = noteAttrRegex.exec(fullText)) !== null) {
-          const note = match[1].trim();
-          if (!emittedNotes.has(note)) {
-            emittedNotes.add(note);
-            onProgress(note);
+          const noteMatch = match[1];
+          if (noteMatch) {
+            const note = noteMatch.trim();
+            if (!emittedNotes.has(note)) {
+              emittedNotes.add(note);
+              onProgress(note);
+            }
           }
         }
       }

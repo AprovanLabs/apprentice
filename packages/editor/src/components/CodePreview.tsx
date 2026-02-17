@@ -3,7 +3,7 @@ import { Code, Eye, AlertCircle, Loader2, Pencil, RotateCcw, MessageSquare, Clou
 import type { Compiler, MountedWidget, Manifest } from '@aprovan/patchwork-compiler';
 import { createSingleFileProject } from '@aprovan/patchwork-compiler';
 import { EditModal, type CompileFn } from './edit';
-import { saveProject, getVFSConfig } from '@/lib/vfs';
+import { saveProject, getVFSConfig } from '../lib/vfs';
 
 type SaveStatus = 'unsaved' | 'saving' | 'saved' | 'error';
 
@@ -62,9 +62,6 @@ function useCodeCompiler(compiler: Compiler | null, code: string, enabled: boole
         const mounted = await compiler.mount(widget, {
           target: containerRef.current,
           mode: 'embedded'
-          // Use DEV_SANDBOX in development for same-origin module loading
-          // sandbox: import.meta.env.DEV ? DEV_SANDBOX : undefined,
-          // mode: 'iframe',
         });
 
         mountedRef.current = mounted;

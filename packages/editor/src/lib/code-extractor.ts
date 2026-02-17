@@ -37,7 +37,11 @@ function parseAttributes(attrString: string): Record<string, string> {
   const regex = new RegExp(ATTRIBUTE_REGEX.source, 'g');
   let match;
   while ((match = regex.exec(attrString)) !== null) {
-    attrs[match[1]] = match[2];
+    const key = match[1];
+    const value = match[2];
+    if (key && value !== undefined) {
+      attrs[key] = value;
+    }
   }
   return attrs;
 }
@@ -67,7 +71,7 @@ export function extractCodeBlocks(
   while ((match = regex.exec(text)) !== null) {
     const language = match[1]?.toLowerCase() || '';
     const attributes = parseAttributes(match[2] || '');
-    const content = match[3];
+    const content = match[3] ?? '';
     const included = !filterLanguages || filterLanguages.has(language);
     allMatches.push({ match, language, content, attributes, included });
   }
@@ -98,7 +102,7 @@ export function extractCodeBlocks(
     if (unclosedMatch) {
       const language = unclosedMatch[1]?.toLowerCase() || '';
       const attributes = parseAttributes(unclosedMatch[2] || '');
-      const content = unclosedMatch[3];
+      const content = unclosedMatch[3] ?? '';
       const included = !filterLanguages || filterLanguages.has(language);
       
       // Add text before the unclosed block

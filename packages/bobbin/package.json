@@ -1,7 +1,7 @@
 {
   "name": "@aprovan/bobbin",
   "version": "0.1.0",
-  "description": "Visual DOM editor widget",
+  "description": "Visual DOM editor",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
