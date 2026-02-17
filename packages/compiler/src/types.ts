@@ -99,6 +99,21 @@ export interface ImageConfig {
   aliases?: Record<string, string>;
 }
 
+/**
+ * Mount function signature provided by images to handle widget mounting.
+ * Takes the widget module exports and mounts it to the container.
+ *
+ * @param module - The widget module with its exports (default, mount, render, game, etc.)
+ * @param container - The DOM element to mount into
+ * @param inputs - Props/inputs to pass to the widget
+ * @returns A cleanup function to unmount, or void
+ */
+export type ImageMountFn = (
+  module: Record<string, unknown>,
+  container: HTMLElement,
+  inputs: Record<string, unknown>,
+) => void | (() => void) | Promise<void | (() => void)>;
+
 // Loaded image
 export interface LoadedImage {
   /** Package name */
@@ -115,6 +130,12 @@ export interface LoadedImage {
   setup?: (root: HTMLElement) => void | Promise<void>;
   /** CSS content (if available) */
   css?: string;
+  /**
+   * Mount function to handle widget mounting.
+   * Each image defines how it expects widgets to export their entry points.
+   * Falls back to default mounting behavior if not provided.
+   */
+  mount?: ImageMountFn;
 }
 
 // Compiler factory options

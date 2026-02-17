@@ -62,6 +62,7 @@ export type {
   CompilerOptions,
   // Image types
   ImageConfig,
+  ImageMountFn,
   LoadedImage,
   // Service types
   ServiceProxy,

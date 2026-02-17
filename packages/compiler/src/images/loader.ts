@@ -130,21 +130,25 @@ async function loadLocalImage(name: string): Promise<LoadedImage | null> {
     const config =
       safeParseImageConfig(packageJson.patchwork) || DEFAULT_IMAGE_CONFIG;
 
-    // Try to load setup function
+    // Try to load setup and mount functions
     let setup: LoadedImage['setup'];
+    let mount: LoadedImage['mount'];
     const packageDir = dirname(packageJsonPath);
 
     if (packageJson.main) {
       try {
         const mainPath = join(packageDir, packageJson.main);
-        const setupModule = await import(
+        const imageModule = await import(
           /* webpackIgnore: true */ /* @vite-ignore */ mainPath
         );
-        if (typeof setupModule.setup === 'function') {
-          setup = setupModule.setup;
+        if (typeof imageModule.setup === 'function') {
+          setup = imageModule.setup;
+        }
+        if (typeof imageModule.mount === 'function') {
+          mount = imageModule.mount;
         }
       } catch {
-        // Setup is optional
+        // Setup/mount are optional
       }
     }
 
@@ -154,6 +158,7 @@ async function loadLocalImage(name: string): Promise<LoadedImage | null> {
       config,
       dependencies: packageJson.dependencies || {},
       setup,
+      mount,
     };
   } catch {
     // Fall back to other methods
@@ -186,8 +191,9 @@ export async function loadImage(spec: string): Promise<LoadedImage> {
   const config =
     safeParseImageConfig(packageJson.patchwork) || DEFAULT_IMAGE_CONFIG;
 
-  // Try to load setup function if main is specified
+  // Try to load setup/mount functions if main is specified
   let setup: LoadedImage['setup'];
+  let mount: LoadedImage['mount'];
   let moduleUrl: string | undefined;
   if (packageJson.main && typeof window !== 'undefined') {
     try {
@@ -200,15 +206,18 @@ export async function loadImage(spec: string): Promise<LoadedImage> {
         : packageJson.main;
       const importUrl = `${cdnBaseUrl}/${name}${versionSuffix}/${mainEntry}`;
       moduleUrl = importUrl;
-      const setupModule = await import(
+      const imageModule = await import(
         /* @vite-ignore */
         importUrl
       );
-      if (typeof setupModule.setup === 'function') {
-        setup = setupModule.setup;
+      if (typeof imageModule.setup === 'function') {
+        setup = imageModule.setup;
+      }
+      if (typeof imageModule.mount === 'function') {
+        mount = imageModule.mount;
       }
     } catch (err) {
-      // Setup is optional, but log the error for debugging
+      // Setup/mount are optional, but log the error for debugging
       console.error('[patchwork-compiler] Failed to load image module:', err);
     }
   }
@@ -220,5 +229,6 @@ export async function loadImage(spec: string): Promise<LoadedImage> {
     config,
     dependencies: packageJson.dependencies || {},
     setup,
+    mount,
   };
 }

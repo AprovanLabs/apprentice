@@ -19,6 +19,58 @@ import {
 } from './bridge.js';
 
 let mountCounter = 0;
+let importMapInjected = false;
+
+/**
+ * Inject an import map for bare module specifiers.
+ * Maps package names to their CDN URLs so browsers can resolve them.
+ * Must be called before any ES module imports happen.
+ */
+function injectImportMap(
+  globals: Record<string, string>,
+  preloadUrls: string[],
+  deps?: Record<string, string>,
+): void {
+  // Only inject once per page (browser limitation)
+  if (importMapInjected) return;
+
+  // Check if there's already an import map
+  const existingMap = document.querySelector('script[type="importmap"]');
+  if (existingMap) {
+    // Cannot modify existing import maps in standard browsers
+    importMapInjected = true;
+    return;
+  }
+
+  // Build import map from globals + preload URLs
+  // Convention: globals keys are package names, preload URLs are in matching order
+  const imports: Record<string, string> = {};
+  const packageNames = Object.keys(globals);
+
+  packageNames.forEach((pkgName, index) => {
+    // Use the preload URL if available, otherwise construct CDN URL
+    if (preloadUrls[index]) {
+      imports[pkgName] = preloadUrls[index];
+    } else if (deps?.[pkgName]) {
+      imports[pkgName] = `https://esm.sh/${pkgName}@${deps[pkgName]}`;
+    } else {
+      imports[pkgName] = `https://esm.sh/${pkgName}`;
+    }
+  });
+
+  // Also add common subpaths (e.g., react-dom/client)
+  if (imports['react-dom']) {
+    imports['react-dom/client'] = imports['react-dom'];
+  }
+
+  // Inject new import map
+  const script = document.createElement('script');
+  script.type = 'importmap';
+  script.textContent = JSON.stringify({ imports }, null, 2);
+  document.head.insertBefore(script, document.head.firstChild);
+
+  importMapInjected = true;
+}
 
 /**
  * Generate a unique mount ID
@@ -114,6 +166,11 @@ export async function mountEmbedded(
   const frameworkConfig = image?.config?.framework || {};
   const preloadUrls = frameworkConfig.preload || [];
   const globalMapping = frameworkConfig.globals || {};
+  const deps = frameworkConfig.deps || {};
+
+  // Inject import map for bare module specifiers (must happen before ES module imports)
+  // This allows the browser to resolve imports like 'react' to CDN URLs
+  injectImportMap(globalMapping, preloadUrls, deps);
 
   // Pre-load framework modules from image config
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -150,8 +207,14 @@ export async function mountEmbedded(
   try {
     const module = await import(/* webpackIgnore: true */ scriptUrl);
 
-    // Custom mount function takes priority
-    if (typeof module.mount === 'function') {
+    // Image-provided mount handler takes priority
+    if (image?.mount) {
+      const result = await image.mount(module, container, inputs);
+      if (typeof result === 'function') {
+        moduleCleanup = result;
+      }
+    } else if (typeof module.mount === 'function') {
+      // Widget exports its own mount function
       const result = await module.mount(container, inputs);
       if (typeof result === 'function') {
         moduleCleanup = result;
