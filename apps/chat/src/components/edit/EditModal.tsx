@@ -1,4 +1,4 @@
-import { useState, useCallback, type ReactNode } from 'react';
+import { useState, useCallback, useMemo, type ReactNode } from 'react';
 import {
   Code,
   Eye,
@@ -8,10 +8,14 @@ import {
   X,
   RotateCcw,
   Send,
+  FolderTree,
+  FileCode,
 } from 'lucide-react';
 import { MarkdownEditor } from '../MarkdownEditor';
 import { EditHistory } from './EditHistory';
+import { FileTree } from './FileTree';
 import { useEditSession, type UseEditSessionOptions } from './useEditSession';
+import { getActiveContent, getFiles } from './types';
 import { Bobbin, serializeChangesToYAML, type Change } from '@aprovan/bobbin';
 
 // Simple hash for React key to force re-render on code changes
@@ -44,12 +48,15 @@ export function EditModal({
   ...sessionOptions
 }: EditModalProps) {
   const [showPreview, setShowPreview] = useState(true);
+  const [showTree, setShowTree] = useState(false);
   const [editInput, setEditInput] = useState('');
   const [bobbinChanges, setBobbinChanges] = useState<Change[]>([]);
   const [previewContainer, setPreviewContainer] = useState<HTMLDivElement | null>(null);
 
   const session = useEditSession(sessionOptions);
-  const hasChanges = session.code !== session.originalCode;
+  const code = getActiveContent(session);
+  const files = useMemo(() => getFiles(session.project), [session.project]);
+  const hasChanges = code !== (session.originalProject.files.get(session.activeFile)?.content ?? '');
 
   const handleBobbinChanges = useCallback((changes: Change[]) => {
     setBobbinChanges(changes);
@@ -73,7 +80,7 @@ export function EditModal({
 
   const handleClose = () => {
     const editCount = session.history.length;
-    const finalCode = session.code;
+    const finalCode = code;
     setEditInput('');
     session.clearError();
     onClose(finalCode, editCount);
@@ -103,6 +110,13 @@ export function EditModal({
               </button>
             )}
             <button
+              onClick={() => setShowTree(!showTree)}
+              className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${showTree ? 'bg-primary text-primary-foreground' : 'hover:bg-primary/20 text-primary'}`}
+              title={showTree ? 'Single file' : 'File tree'}
+            >
+              {showTree ? <FileCode className="h-3 w-3" /> : <FolderTree className="h-3 w-3" />}
+            </button>
+            <button
               onClick={() => setShowPreview(!showPreview)}
               className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${showPreview ? 'bg-primary text-primary-foreground' : 'hover:bg-primary/20 text-primary'}`}
             >
@@ -120,43 +134,51 @@ export function EditModal({
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 border-b-2 overflow-auto">
-          {showPreview ? (
-            <div className="bg-white h-full relative" ref={setPreviewContainer}>
-              {previewError && renderError ? (
-                renderError(previewError)
-              ) : previewError ? (
-                <div className="p-4 text-sm text-destructive flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  <span>{previewError}</span>
-                </div>
-              ) : previewLoading && renderLoading ? (
-                renderLoading()
-              ) : previewLoading ? (
-                <div className="p-4 flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Rendering preview...</span>
-                </div>
-              ) : (
-                <div className="p-4" key={hashCode(session.code)}>{renderPreview(session.code)}</div>
-              )}
-              {/* Bobbin visual editor */}
-              <Bobbin
-                container={previewContainer}
-                pillContainer={previewContainer}
-                defaultActive={false}
-                showInspector
-                onChanges={handleBobbinChanges}
-                exclude={['.bobbin-pill', '[data-bobbin]']}
-              />
-            </div>
-          ) : (
-            <div className="p-4 bg-muted/10 h-full overflow-auto">
-              <pre className="text-xs whitespace-pre-wrap break-words m-0">
-                <code>{session.code}</code>
-              </pre>
-            </div>
+        <div className="flex-1 min-h-0 border-b-2 overflow-hidden flex">
+          {showTree && (
+            <FileTree
+              files={files}
+              activeFile={session.activeFile}
+              onSelectFile={session.setActiveFile}
+            />
           )}
+          <div className="flex-1 overflow-auto">
+            {showPreview ? (
+              <div className="bg-white h-full relative" ref={setPreviewContainer}>
+                {previewError && renderError ? (
+                  renderError(previewError)
+                ) : previewError ? (
+                  <div className="p-4 text-sm text-destructive flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{previewError}</span>
+                  </div>
+                ) : previewLoading && renderLoading ? (
+                  renderLoading()
+                ) : previewLoading ? (
+                  <div className="p-4 flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Rendering preview...</span>
+                  </div>
+                ) : (
+                  <div className="p-4" key={hashCode(code)}>{renderPreview(code)}</div>
+                )}
+                {!renderLoading && !renderError && !previewLoading && <Bobbin
+                  container={previewContainer}
+                  pillContainer={previewContainer}
+                  defaultActive={false}
+                  showInspector
+                  onChanges={handleBobbinChanges}
+                  exclude={['.bobbin-pill', '[data-bobbin]']}
+                />}
+              </div>
+            ) : (
+              <div className="p-4 bg-muted/10 h-full overflow-auto">
+                <pre className="text-xs whitespace-pre-wrap break-words m-0">
+                  <code>{code}</code>
+                </pre>
+              </div>
+            )}
+          </div>
         </div>
 
         <EditHistory

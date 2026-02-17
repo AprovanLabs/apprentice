@@ -1,3 +1,5 @@
+import type { VirtualProject, VirtualFile } from '@aprovan/patchwork-compiler';
+
 export interface EditHistoryEntry {
   prompt: string;
   summary: string;
@@ -5,8 +7,9 @@ export interface EditHistoryEntry {
 }
 
 export interface EditSessionState {
-  code: string;
-  originalCode: string;
+  project: VirtualProject;
+  originalProject: VirtualProject;
+  activeFile: string;
   history: EditHistoryEntry[];
   isApplying: boolean;
   error: string | null;
@@ -17,8 +20,18 @@ export interface EditSessionState {
 export interface EditSessionActions {
   submitEdit: (prompt: string) => Promise<void>;
   revert: () => void;
-  updateCode: (code: string) => void;
+  updateActiveFile: (content: string) => void;
+  setActiveFile: (path: string) => void;
   clearError: () => void;
+}
+
+// Convenience getters
+export function getActiveContent(state: EditSessionState): string {
+  return state.project.files.get(state.activeFile)?.content ?? '';
+}
+
+export function getFiles(project: VirtualProject): VirtualFile[] {
+  return Array.from(project.files.values());
 }
 
 export interface EditRequest {

@@ -58,7 +58,15 @@ function TextPart({ text, isUser }: { text: string; isUser: boolean }) {
     <div className="prose prose-sm dark:prose-invert prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-pre:my-2 prose-code:before:content-none prose-code:after:content-none">
       {parts.map((part, index) => {
         if (part.type === 'code') {
-          return <CodePreview key={index} code={part.content} compiler={compiler} services={services} />;
+          return (
+            <CodePreview
+              key={index}
+              code={part.content}
+              compiler={compiler}
+              services={services}
+              filePath={part.attributes?.path}
+            />
+          );
         }
         return <Markdown key={index} remarkPlugins={[remarkGfm]}>{part.content}</Markdown>;
       })}

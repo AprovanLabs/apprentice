@@ -1,14 +1,19 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Code, Eye, AlertCircle, Loader2, Pencil, RotateCcw, MessageSquare } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Code, Eye, AlertCircle, Loader2, Pencil, RotateCcw, MessageSquare, Cloud, Check } from 'lucide-react';
 import type { Compiler, MountedWidget, Manifest } from '@aprovan/patchwork-compiler';
-import { DEV_SANDBOX } from '@aprovan/patchwork-compiler';
+import { createSingleFileProject } from '@aprovan/patchwork-compiler';
 import { EditModal, type CompileFn } from './edit';
+import { saveProject, getVFSConfig } from '@/lib/vfs';
+
+type SaveStatus = 'unsaved' | 'saving' | 'saved' | 'error';
 
 interface CodePreviewProps {
   code: string;
   compiler: Compiler | null;
   /** Available service namespaces for widget calls */
   services?: string[];
+  /** Optional file path from code block attributes (e.g., "components/calculator.tsx") */
+  filePath?: string;
 }
 
 function createManifest(services?: string[]): Manifest {
@@ -88,11 +93,56 @@ function useCodeCompiler(compiler: Compiler | null, code: string, enabled: boole
   return { containerRef, loading, error };
 }
 
-export function CodePreview({ code: originalCode, compiler, services }: CodePreviewProps) {
+export function CodePreview({ code: originalCode, compiler, services, filePath }: CodePreviewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [currentCode, setCurrentCode] = useState(originalCode);
   const [editCount, setEditCount] = useState(0);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('unsaved');
+
+  // Stable project ID for this widget instance (fallback when not using paths)
+  const fallbackId = useMemo(() => crypto.randomUUID(), []);
+
+  // Determine project ID based on server config and available path
+  const getProjectId = useCallback(async () => {
+    if (filePath) {
+      const config = await getVFSConfig();
+      if (config.usePaths) {
+        // Use the directory containing the file as project ID
+        const parts = filePath.split('/');
+        if (parts.length > 1) {
+          return parts.slice(0, -1).join('/');
+        }
+        // Single file, use filename without extension as ID
+        return filePath.replace(/\.[^.]+$/, '');
+      }
+    }
+    return fallbackId;
+  }, [filePath, fallbackId]);
+
+  // Get the entry filename
+  const getEntryFile = useCallback(() => {
+    if (filePath) {
+      const parts = filePath.split('/');
+      return parts[parts.length - 1] || 'main.tsx';
+    }
+    return 'main.tsx';
+  }, [filePath]);
+
+  // Manual save handler
+  const handleSave = useCallback(async () => {
+    setSaveStatus('saving');
+    try {
+      const projectId = await getProjectId();
+      const entryFile = getEntryFile();
+      const project = createSingleFileProject(currentCode, entryFile, projectId);
+      await saveProject(project);
+      setSaveStatus('saved');
+    } catch (err) {
+      console.warn('[VFS] Failed to save project:', err);
+      setSaveStatus('error');
+    }
+  }, [currentCode, getProjectId, getEntryFile]);
 
   const { containerRef, loading, error } = useCodeCompiler(
     compiler,
@@ -152,6 +202,30 @@ export function CodePreview({ code: originalCode, compiler, services }: CodePrev
               {editCount} edit{editCount !== 1 ? 's' : ''}
             </span>
           )}
+          {/* Save status indicator */}
+            <button
+              onClick={handleSave}
+              disabled={saveStatus === 'saving'}
+              className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
+                saveStatus === 'saved' 
+                  ? 'text-green-600' 
+                  : saveStatus === 'error' 
+                    ? 'text-destructive hover:bg-muted' 
+                    : 'text-muted-foreground hover:bg-muted'
+              }`}
+              title={saveStatus === 'saved' ? 'Saved to disk' : saveStatus === 'saving' ? 'Saving...' : saveStatus === 'error' ? 'Save failed - click to retry' : 'Click to save'}
+            >
+              {saveStatus === 'saving' ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <span className="relative">
+                  <Cloud className="h-3 w-3" />
+                  {saveStatus === 'saved' && (
+                    <Check className="h-2 w-2 absolute -bottom-0.5 -right-0.5 stroke-[3]" />
+                  )}
+                </span>
+              )}
+            </button>
           <div className="ml-auto flex gap-1">
             {hasChanges && (
               <button
@@ -213,6 +287,23 @@ export function CodePreview({ code: originalCode, compiler, services }: CodePrev
           setCurrentCode(finalCode);
           setEditCount((prev) => prev + edits);
           setIsEditing(false);
+
+          // Auto-save to VFS when edits complete
+          if (edits > 0) {
+            setSaveStatus('saving');
+            (async () => {
+              try {
+                const projectId = await getProjectId();
+                const entryFile = getEntryFile();
+                const project = createSingleFileProject(finalCode, entryFile, projectId);
+                await saveProject(project);
+                setSaveStatus('saved');
+              } catch (err) {
+                console.warn('[VFS] Failed to save project:', err);
+                setSaveStatus('error');
+              }
+            })();
+          }
         }}
         originalCode={currentCode}
         compile={compile}

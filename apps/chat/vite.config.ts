@@ -17,6 +17,10 @@ export default defineConfig({
         target: STITCHERY_URL,
         changeOrigin: true,
       },
+      '/vfs': {
+        target: STITCHERY_URL,
+        changeOrigin: true,
+      },
     },
   },
 });

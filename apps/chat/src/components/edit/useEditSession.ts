@@ -1,4 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import type { VirtualProject } from '@aprovan/patchwork-compiler';
+import { createSingleFileProject } from '@aprovan/patchwork-compiler';
 import { sendEditRequest } from './api';
 import type {
   EditHistoryEntry,
@@ -13,12 +15,25 @@ export interface UseEditSessionOptions {
   apiEndpoint?: string;
 }
 
+function cloneProject(project: VirtualProject): VirtualProject {
+  return {
+    ...project,
+    files: new Map(project.files),
+  };
+}
+
 export function useEditSession(
   options: UseEditSessionOptions,
 ): EditSessionState & EditSessionActions {
   const { originalCode, compile, apiEndpoint } = options;
 
-  const [code, setCode] = useState(originalCode);
+  const originalProject = useMemo(
+    () => createSingleFileProject(originalCode),
+    [originalCode],
+  );
+
+  const [project, setProject] = useState<VirtualProject>(originalProject);
+  const [activeFile, setActiveFile] = useState(originalProject.entry);
   const [history, setHistory] = useState<EditHistoryEntry[]>([]);
   const [isApplying, setIsApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +84,11 @@ export function useEditSession(
     [compile, apiEndpoint],
   );
 
+  const currentCode = useMemo(
+    () => project.files.get(activeFile)?.content ?? '',
+    [project, activeFile],
+  );
+
   const submitEdit = useCallback(
     async (prompt: string) => {
       if (!prompt.trim() || isApplying) return;
@@ -79,8 +99,15 @@ export function useEditSession(
       setPendingPrompt(prompt);
 
       try {
-        const result = await performEdit(code, prompt);
-        setCode(result.newCode);
+        const result = await performEdit(currentCode, prompt);
+        setProject((prev) => {
+          const updated = cloneProject(prev);
+          const file = updated.files.get(activeFile);
+          if (file) {
+            updated.files.set(activeFile, { ...file, content: result.newCode });
+          }
+          return updated;
+        });
         setHistory((prev) => [...prev, ...result.entries]);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Edit failed');
@@ -90,27 +117,39 @@ export function useEditSession(
         setPendingPrompt(null);
       }
     },
-    [code, isApplying, performEdit],
+    [currentCode, activeFile, isApplying, performEdit],
   );
 
   const revert = useCallback(() => {
-    setCode(originalCode);
+    setProject(originalProject);
+    setActiveFile(originalProject.entry);
     setHistory([]);
     setError(null);
     setStreamingNotes([]);
-  }, [originalCode]);
+  }, [originalProject]);
 
-  const updateCode = useCallback((newCode: string) => {
-    setCode(newCode);
-  }, []);
+  const updateActiveFile = useCallback(
+    (content: string) => {
+      setProject((prev) => {
+        const updated = cloneProject(prev);
+        const file = updated.files.get(activeFile);
+        if (file) {
+          updated.files.set(activeFile, { ...file, content });
+        }
+        return updated;
+      });
+    },
+    [activeFile],
+  );
 
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
   return {
-    code,
-    originalCode,
+    project,
+    originalProject,
+    activeFile,
     history,
     isApplying,
     error,
@@ -118,7 +157,8 @@ export function useEditSession(
     pendingPrompt,
     submitEdit,
     revert,
-    updateCode,
+    updateActiveFile,
+    setActiveFile,
     clearError,
   };
 }

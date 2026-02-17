@@ -1,3 +1,6 @@
+import type { VirtualFile, VirtualProject } from '@aprovan/patchwork-compiler';
+import { createProjectFromFiles, detectMainFile } from '@aprovan/patchwork-compiler';
+
 // Matches fenced code blocks with optional attributes: ```language attr="value"\n...content...```
 // Captures: [1] = language (optional), [2] = attributes (optional), [3] = content
 const CODE_BLOCK_REGEX = /```([a-zA-Z0-9_+-]*)((?:\s+[a-zA-Z_][\w-]*="[^"]*")*)\s*\n([\s\S]*?)```/g;
@@ -158,4 +161,46 @@ export function getCodeBlockLanguages(text: string): Set<string> {
     }
   }
   return languages;
+}
+
+/**
+ * Extract code blocks as a VirtualProject.
+ * Groups files with path attributes into a multi-file project.
+ * Files without paths are treated as the main entry file.
+ */
+export function extractProject(
+  text: string,
+  options?: ExtractOptions
+): { project: VirtualProject; textParts: TextPart[] } {
+  const parts = extractCodeBlocks(text, options);
+
+  const files: VirtualFile[] = [];
+  const textParts: TextPart[] = [];
+
+  for (const part of parts) {
+    if (part.type === 'text') {
+      textParts.push(part as TextPart);
+    } else if (part.type === 'code') {
+      const codePart = part as CodePart;
+      if (codePart.attributes?.path) {
+        files.push({
+          path: codePart.attributes.path,
+          content: codePart.content,
+          language: codePart.language,
+          note: codePart.attributes.note,
+        });
+      } else {
+        files.push({
+          path: detectMainFile(codePart.language),
+          content: codePart.content,
+          language: codePart.language,
+        });
+      }
+    }
+  }
+
+  return {
+    project: createProjectFromFiles(files),
+    textParts,
+  };
 }
