@@ -287,6 +287,43 @@ indexerCommand
     await main();
   });
 
+indexerCommand
+  .command('flush')
+  .description(
+    'Flush the WAL file to the main database (for backup or maintenance)',
+  )
+  .option('--full', 'Wait for all readers before checkpointing')
+  .action(async (options) => {
+    const { getDb, checkpoint, closeDb } = await import('./db');
+
+    // Initialize db connection (skip schema init as we just need to checkpoint)
+    getDb(true);
+
+    console.log('Checkpointing WAL...');
+    const mode = options.full ? 'TRUNCATE' : 'PASSIVE';
+    const result = await checkpoint(mode);
+
+    if (result) {
+      console.log(
+        `WAL checkpoint complete: ${result.walPagesWritten}/${result.walPagesTotal} pages flushed`,
+      );
+      if (result.walPagesTotal > result.walPagesWritten) {
+        console.log(
+          `Note: ${
+            result.walPagesTotal - result.walPagesWritten
+          } pages were not flushed (active readers).`,
+        );
+        console.log(
+          'Use --full to wait for all readers and force a complete flush.',
+        );
+      }
+    } else {
+      console.log('WAL checkpoint completed (no pages to flush)');
+    }
+
+    await closeDb();
+  });
+
 // === PATCHWORK ===
 
 // TODO: createPatchworkCommand is not yet implemented

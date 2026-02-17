@@ -2,7 +2,7 @@ import { indexAllContexts } from './indexer/index-loop';
 import { processBashLog, processChatLog } from './indexer/event-processor';
 import { generateAssetEmbeddings } from './indexer/embedding-generator';
 import { paths, config, loadUserConfig } from './config';
-import { getDb, closeDb } from './db';
+import { getDb, closeDb, checkpoint } from './db';
 import { runChatImport } from './import-chat';
 import { adapters } from './importers';
 import {
@@ -14,6 +14,9 @@ import {
   getEventsWithoutEmbeddings,
   batchUpsertEventEmbeddings,
 } from './search/vector';
+
+// WAL checkpoint interval - every 5 minutes
+const WAL_CHECKPOINT_INTERVAL_MS = 5 * 60 * 1000;
 
 async function generateEventEmbeddings(batchSize: number): Promise<number> {
   const config = getEmbeddingConfig();
@@ -154,15 +157,29 @@ export async function main(): Promise<void> {
     }, chatImportInterval);
   }
 
-  process.on('SIGINT', () => {
+  // Periodic WAL checkpoint to prevent unbounded WAL growth
+  setInterval(async () => {
+    try {
+      const result = await checkpoint('PASSIVE');
+      if (result && result.walPagesWritten > 0) {
+        console.log(
+          `WAL checkpoint: ${result.walPagesWritten}/${result.walPagesTotal} pages`,
+        );
+      }
+    } catch (err) {
+      console.error('WAL checkpoint error:', err);
+    }
+  }, WAL_CHECKPOINT_INTERVAL_MS);
+
+  process.on('SIGINT', async () => {
     console.log('\nShutting down indexer...');
-    closeDb();
+    await closeDb();
     process.exit(0);
   });
 
-  process.on('SIGTERM', () => {
+  process.on('SIGTERM', async () => {
     console.log('\nShutting down indexer...');
-    closeDb();
+    await closeDb();
     process.exit(0);
   });
 }

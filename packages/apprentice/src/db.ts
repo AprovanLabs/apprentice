@@ -8,8 +8,9 @@ let db: Client | null = null;
 
 /**
  * Initialize and get the database connection
+ * @param skipSchema - Skip schema initialization (useful for checkpoint-only operations)
  */
-export function getDb(): Client {
+export function getDb(skipSchema = false): Client {
   if (db) return db;
 
   // Ensure directory exists
@@ -30,7 +31,9 @@ export function getDb(): Client {
   db.execute('PRAGMA foreign_keys = ON').catch(console.error);
 
   // Initialize schema (async but we don't wait - it's idempotent)
-  initSchema(db).catch(console.error);
+  if (!skipSchema) {
+    initSchema(db).catch(console.error);
+  }
 
   return db;
 }
@@ -224,6 +227,10 @@ async function initSchema(db: Client): Promise<void> {
   );
   await db.execute(
     `CREATE INDEX IF NOT EXISTS idx_content_refs_head ON content_refs(is_head)`,
+  );
+  // Partial unique index to prevent duplicate head refs (NULL version_ref_id bypasses the table UNIQUE constraint)
+  await db.execute(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_content_refs_head_unique ON content_refs(content_hash, context_id) WHERE is_head = 1`,
   );
 
   await db.execute(`
@@ -489,8 +496,60 @@ export async function updateIndexerState(
   });
 }
 
-export function closeDb(): void {
+/**
+ * Run a WAL checkpoint to flush the WAL file to the main database.
+ * This is important to prevent the WAL file from growing unboundedly.
+ *
+ * @param mode - Checkpoint mode:
+ *   - 'PASSIVE': Checkpoint as much as possible without waiting (default)
+ *   - 'FULL': Wait for all readers, then checkpoint
+ *   - 'RESTART': Like FULL, but also restart the WAL
+ *   - 'TRUNCATE': Like RESTART, but also truncate WAL to zero bytes
+ * @returns Promise with checkpoint result or null if db not initialized
+ */
+export async function checkpoint(
+  mode: 'PASSIVE' | 'FULL' | 'RESTART' | 'TRUNCATE' = 'PASSIVE',
+): Promise<{ walPagesWritten: number; walPagesTotal: number } | null> {
+  if (!db) return null;
+
+  try {
+    const result = await db.execute(`PRAGMA wal_checkpoint(${mode})`);
+    const row = result.rows[0] as
+      | { busy: number; log: number; checkpointed: number }
+      | undefined;
+    if (row) {
+      return {
+        walPagesWritten: row.checkpointed ?? 0,
+        walPagesTotal: row.log ?? 0,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error(`WAL checkpoint (${mode}) failed:`, error);
+    return null;
+  }
+}
+
+/**
+ * Flush the WAL file completely by running a TRUNCATE checkpoint.
+ * This will wait for all readers and truncate the WAL to zero bytes.
+ * Use this for maintenance or before backups.
+ */
+export async function flushWal(): Promise<boolean> {
+  const result = await checkpoint('TRUNCATE');
+  if (result) {
+    console.log(
+      `WAL flushed: ${result.walPagesWritten}/${result.walPagesTotal} pages written`,
+    );
+    return true;
+  }
+  return false;
+}
+
+export async function closeDb(): Promise<void> {
   if (db) {
+    // Checkpoint before closing to flush WAL
+    await checkpoint('TRUNCATE').catch(console.error);
     db.close();
     db = null;
   }

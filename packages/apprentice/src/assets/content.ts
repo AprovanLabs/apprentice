@@ -48,10 +48,12 @@ export async function setContent(
     args: [contentHash, content, content.length, now, now],
   });
 
+  // Use the partial unique index idx_content_refs_head_unique for conflict detection
+  // This properly deduplicates head refs (the table-level UNIQUE doesn't work with NULL version_ref_id)
   await db.execute({
     sql: `INSERT INTO content_refs (content_hash, context_id, is_head)
           VALUES (?, ?, 1)
-          ON CONFLICT(content_hash, context_id, version_ref_id) DO UPDATE SET is_head = 1`,
+          ON CONFLICT(content_hash, context_id) WHERE is_head = 1 DO NOTHING`,
     args: [contentHash, contextId],
   });
 }

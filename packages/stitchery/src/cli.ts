@@ -30,6 +30,15 @@ program
     '--local-package <packages...>',
     'Local package overrides (format: name:path)',
   )
+  .option(
+    '--vfs-dir <path>',
+    'Directory for virtual file system storage',
+    '.working/widgets',
+  )
+  .option(
+    '--vfs-use-paths',
+    'Use file paths from code blocks instead of UUIDs for VFS storage',
+  )
   .option('-v, --verbose', 'Enable verbose logging')
   .action(async (options) => {
     if (options.verbose) {
@@ -73,6 +82,15 @@ program
       }
     }
 
+    // Resolve VFS directory path
+    const vfsDir = options.vfsDir
+      ? path.resolve(process.cwd(), options.vfsDir)
+      : undefined;
+
+    if (vfsDir && options.verbose) {
+      console.log('[stitchery] VFS directory:', vfsDir);
+    }
+
     const server = await createStitcheryServer({
       port: parseInt(options.port, 10),
       host: options.host,
@@ -80,6 +98,8 @@ program
       mcpServers,
       localPackages,
       utcp: utcpConfig,
+      vfsDir,
+      vfsUsePaths: options.vfsUsePaths ?? false,
       verbose: options.verbose,
     });
 

@@ -9,12 +9,69 @@ Look at 'patchwork.services' to see what services are available for widgets to c
 
 ## Component Generation
 
-Respond as simple text, encoding a single JSX file that would correctly compile, assuming the provided dependencies are bundled from the runtime.
+Respond with code blocks using tagged attributes on the fence line. The \`note\` attribute (optional but encouraged) provides a brief description visible in the UI. The \`path\` attribute specifies the virtual file path.
+
+### Code Block Format
+
+\`\`\`tsx note="Main component" path="components/weather/main.tsx"
+export default function WeatherWidget() {
+  // component code
+}
+\`\`\`
+
+### Attribute Order
+Put \`note\` first so it's available soonest in streaming UI.
+
+### Multi-File Generation
+
+When generating complex widgets, you can output multiple files. Use the \`@/\` prefix for virtual file system paths. ALWAYS prefer to generate visible components before metadata.
+
+**Example multi-file widget:**
+
+\`\`\`json note="Widget configuration" path="components/dashboard/package.json"
+{
+  "description": "Interactive dashboard widget",
+  "patchwork": {
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" }
+      }
+    },
+    "services": {
+      "analytics": ["getMetrics", "getChartData"]
+    }
+  }
+}
+\`\`\`
+
+\`\`\`tsx note="Main widget component" path="components/dashboard/main.tsx"
+import { Card } from './Card';
+import { Chart } from './Chart';
+
+export default function Dashboard({ title = "Dashboard" }) {
+  return (
+    <div>
+      <h1>{title}</h1>
+      <Card />
+      <Chart />
+    </div>
+  );
+}
+\`\`\`
+
+\`\`\`tsx note="Card subcomponent" path="components/dashboard/Card.tsx"
+export function Card() {
+  return <div className="p-4 rounded border">Card content</div>;
+}
+\`\`\`
 
 ### Requirements
 - DO think heavily about correctness of code and syntax
 - DO keep things simple and self-contained
+- ALWAYS include the \`path\` attribute specifying the file location. Be generic with the name and describe the general component's use
 - ALWAYS output the COMPLETE code block with opening \`\`\`tsx and closing \`\`\` markers
+- Use \`note\` attribute to describe what each code block does (optional but encouraged)
 - NEVER truncate or cut off code - finish the entire component before stopping
 - If the component is complex, simplify it rather than leaving it incomplete
 - Do NOT include: a heading/title
@@ -66,7 +123,7 @@ Step 3: Generate widget that calls weather.get_current_conditions at runtime
 **NEVER embed static data directly in the component.**
 
 ❌ **WRONG** - Embedding data directly:
-\`\`\`tsx
+\`\`\`tsx path="components/weather/bad-example.tsx"
 // DON'T DO THIS - calling tool, then embedding the response as static data
 export default function WeatherWidget() {
   // Static data embedded at generation time - BAD!
@@ -76,7 +133,7 @@ export default function WeatherWidget() {
 \`\`\`
 
 ✅ **CORRECT** - Fetching data at runtime:
-\`\`\`tsx
+\`\`\`tsx note="Weather widget with runtime data" path="components/weather/main.tsx"
 export default function WeatherWidget() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -154,7 +211,7 @@ useEffect(() => {
 **Widgets should accept props for dynamic values instead of hardcoding:**
 
 ❌ **WRONG** - Hardcoded values:
-\`\`\`tsx
+\`\`\`tsx path="components/weather/bad-example.tsx"
 export default function WeatherWidget() {
   // Location hardcoded - BAD!
   const [lat, lon] = [48.8566, 2.3522]; // Paris
@@ -163,7 +220,7 @@ export default function WeatherWidget() {
 \`\`\`
 
 ✅ **CORRECT** - Parameterized with props and defaults:
-\`\`\`tsx
+\`\`\`tsx note="Parameterized weather widget" path="components/weather/main.tsx"
 interface WeatherWidgetProps {
   location?: string;    // e.g., "Paris, France"
   latitude?: number;    // Direct coordinates (optional)
@@ -204,6 +261,7 @@ export default function WeatherWidget({
 - ❌ **Calling \`search_services\` multiple times instead of calling the actual service tool**
 - ❌ **Generating a widget without first making a real call to the service with your intended arguments**
 - ❌ **Treating schema documentation as proof that a service call will work**
+- ❌ **Omitting the \`path\` attribute on code blocks**
 `;
 
 export const EDIT_PROMPT = `
@@ -211,13 +269,9 @@ You are editing an existing JSX component. The user will provide the current cod
 
 ## Response Format
 
-Before each diff block, include a brief progress note using the format:
-[note] Brief description of what this change does
+Use code fences with tagged attributes. The \`note\` attribute (optional but encouraged) provides a brief description visible in the UI. The \`path\` attribute specifies the target file.
 
-Then provide the search/replace diff block:
-
-\`\`\`
-[note] Adding onClick handler to the button
+\`\`\`diff note="Brief description of this change" path="@/components/Button.tsx"
 <<<<<<< SEARCH
 exact code to find
 =======
@@ -225,10 +279,34 @@ replacement code
 >>>>>>> REPLACE
 \`\`\`
 
+### Attribute Order
+Put \`note\` first so it's available soonest in streaming UI.
+
+### Multi-File Edits
+When editing multiple files, use the \`path\` attribute with virtual paths (\`@/\` prefix for generated files):
+
+\`\`\`diff note="Update button handler" path="@/components/Button.tsx"
+<<<<<<< SEARCH
+onClick={() => {}}
+=======
+onClick={() => handleClick()}
+>>>>>>> REPLACE
+\`\`\`
+
+\`\`\`diff note="Add utility function" path="@/lib/utils.ts"
+<<<<<<< SEARCH
+export const formatDate = ...
+=======
+export const formatDate = ...
+
+export const handleClick = () => console.log('clicked');
+>>>>>>> REPLACE
+\`\`\`
+
 ## Rules
 - SEARCH block must match the existing code EXACTLY (whitespace, indentation, everything)
 - You can include multiple diff blocks for multiple changes
-- Each diff block should have its own [note] progress annotation
+- Each diff block should have its own \`note\` attribute annotation
 - Keep changes minimal and targeted
 - Do NOT output the full file - only the diffs
 - If clarification is needed, ask briefly before any diffs

@@ -302,7 +302,7 @@ export function generateHtml(
 <body>
   <div id="root"></div>
   <script>
-    // Service bridge (flat globals: git, github, etc.)
+    // Service bridge
     ${serviceBridge}
   </script>
   <script type="module">

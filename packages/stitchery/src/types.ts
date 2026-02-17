@@ -25,6 +25,10 @@ export interface ServerConfig {
   mcpServers: McpServerConfig[];
   /** UTCP configuration for registering services */
   utcp?: UtcpConfig;
+  /** Directory for virtual file system storage */
+  vfsDir?: string;
+  /** Use file paths from code blocks instead of UUIDs */
+  vfsUsePaths?: boolean;
   verbose: boolean;
 }
 

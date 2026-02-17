@@ -6,6 +6,7 @@ import { jsonSchema, type Tool } from 'ai';
 import type { ServerConfig, McpServerConfig } from '../types.js';
 import { handleChat, handleEdit, type RouteContext } from './routes.js';
 import { handleLocalPackages } from './local-packages.js';
+import { handleVFS, type VFSContext } from './vfs-routes.js';
 import { ServiceRegistry, generateServicesPrompt } from './services.js';
 
 export interface StitcheryServer {
@@ -137,6 +138,8 @@ export async function createStitcheryServer(
     localPackages = {},
     mcpServers = [],
     utcp,
+    vfsDir,
+    vfsUsePaths = false,
     verbose = false,
   } = config;
 
@@ -191,9 +194,16 @@ export async function createStitcheryServer(
 
   const localPkgCtx = { localPackages, log };
 
+  const vfsCtx: VFSContext | null = vfsDir
+    ? { rootDir: vfsDir, usePaths: vfsUsePaths, log }
+    : null;
+
   const server = createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader(
+      'Access-Control-Allow-Methods',
+      'GET, POST, PUT, DELETE, HEAD, OPTIONS',
+    );
     res.setHeader(
       'Access-Control-Allow-Headers',
       'Content-Type, Authorization',
@@ -210,6 +220,10 @@ export async function createStitcheryServer(
 
     try {
       if (handleLocalPackages(req, res, localPkgCtx)) {
+        return;
+      }
+
+      if (vfsCtx && handleVFS(req, res, vfsCtx)) {
         return;
       }
 
