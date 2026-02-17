@@ -119,7 +119,7 @@ export interface LoadedImage {
 
 // Compiler factory options
 export interface CompilerOptions {
-  /** Image package to use (e.g., '@aprovan/patchwork-shadcn') */
+  /** Image package to use (e.g., '@aprovan/patchwork-image-shadcnshadcn') */
   image: string;
   /** Backend proxy URL for service calls */
   proxyUrl: string;

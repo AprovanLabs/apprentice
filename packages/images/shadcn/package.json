@@ -1,5 +1,5 @@
 {
-  "name": "@aprovan/patchwork-shadcn",
+  "name": "@aprovan/patchwork-image-shadcn",
   "version": "0.1.0",
   "description": "Patchwork image: ShadCN/ui with Tailwind CSS and Radix UI",
   "type": "module",

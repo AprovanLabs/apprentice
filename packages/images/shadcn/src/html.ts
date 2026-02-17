@@ -1,5 +1,5 @@
 /**
- * @aprovan/patchwork-shadcn - HTML Generation
+ * @aprovan/patchwork-image-shadcnshadcn - HTML Generation
  *
  * Generates complete HTML documents for browser widget rendering.
  * The image owns the full HTML template including CSS, import maps, and mounting code.

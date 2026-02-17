@@ -21,7 +21,7 @@ function createManifest(services?: string[]): Manifest {
     name: 'preview',
     version: '1.0.0',
     platform: 'browser',
-    image: '@aprovan/patchwork-shadcn',
+    image: '@aprovan/patchwork-image-shadcn',
     services,
   };
 }

@@ -1,5 +1,5 @@
 /**
- * @aprovan/patchwork-shadcn
+ * @aprovan/patchwork-image-shadcn
  *
  * Setup function for the ShadCN/ui image.
  * Uses Tailwind Play CDN for runtime CSS generation.
@@ -106,7 +106,7 @@ export async function setup(
   // Create or update theme style element
   if (!themeStyleElement) {
     themeStyleElement = document.createElement('style');
-    themeStyleElement.id = 'patchwork-shadcn-theme';
+    themeStyleElement.id = 'patchwork-image-shadcn-theme';
     document.head.appendChild(themeStyleElement);
   }
 

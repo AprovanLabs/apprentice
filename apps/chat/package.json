@@ -7,7 +7,7 @@
     "dev": "concurrently -n proxy,stitchery,vite -c green,magenta,blue \"pnpm dev:proxy\" \"pnpm dev:stitchery\" \"sleep 2 && vite\"",
     "dev:client": "vite",
     "dev:proxy": "node ../../packages/copilot-proxy/dist/cli.js serve",
-    "dev:stitchery": "node ../../packages/stitchery/dist/cli.js serve --utcp-config .utcp_config.json --mcp apprentice:node:../../packages/apprentice/dist/mcp-server.js --local-package @aprovan/patchwork-shadcn:../../packages/images/shadcn -v --vfs-dir ../../.working/widgets --vfs-use-paths",
+    "dev:stitchery": "node ../../packages/stitchery/dist/cli.js serve --utcp-config .utcp_config.json --mcp apprentice:node:../../packages/apprentice/dist/mcp-server.js --local-package @aprovan/patchwork-image-shadcn:../../packages/images/shadcn -v --vfs-dir ../../.working/widgets --vfs-use-paths",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },

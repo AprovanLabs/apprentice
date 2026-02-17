@@ -283,7 +283,7 @@ function MessageBubble({ message }: { message: UIMessage }) {
 }
 
 const PROXY_URL = '/api/proxy';
-const IMAGE_SPEC = '@aprovan/patchwork-shadcn';
+const IMAGE_SPEC = '@aprovan/patchwork-image-shadcn';
 // Local proxy for loading image packages, esm.sh for widget imports
 const IMAGE_CDN_URL = import.meta.env.DEV ? '/_local-packages' : 'https://esm.sh';
 const WIDGET_CDN_URL = 'https://esm.sh'; // Widget imports need esm.sh bundles like @packagedcn

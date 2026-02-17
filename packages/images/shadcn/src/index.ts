@@ -1,5 +1,5 @@
 /**
- * @aprovan/patchwork-shadcn
+ * @aprovan/patchwork-image-shadcn
  *
  * ShadCN/ui image for browser widgets with Tailwind CSS and Radix UI components.
  */

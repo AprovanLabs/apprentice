@@ -8,7 +8,7 @@
  * import { createCompiler } from '@aprovan/patchwork-compiler';
  *
  * const compiler = await createCompiler({
- *   image: '@aprovan/patchwork-shadcn',
+ *   image: '@aprovan/patchwork-image-shadcn',
  *   proxyUrl: 'http://localhost:3000/api/proxy'
  * });
  *
