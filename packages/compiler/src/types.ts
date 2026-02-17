@@ -1,3 +1,5 @@
+import type { VirtualProject } from './vfs/types.js';
+
 /**
  * Core types for the Patchwork compiler
  */
@@ -24,10 +26,9 @@ export interface InputSpec {
   description?: string;
 }
 
-// Compiler options
+// Compiler options (reserved for future use)
 export interface CompileOptions {
-  /** Enable TypeScript type-checking (default: false, JavaScript-first) */
-  typescript?: boolean;
+  // Entry point and loader are inferred from VirtualProject.entry
 }
 
 // Compiled widget output
@@ -138,7 +139,7 @@ export interface Compiler {
 
   /** Compile widget source to ESM */
   compile(
-    source: string,
+    source: string | VirtualProject,
     manifest: Manifest,
     options?: CompileOptions,
   ): Promise<CompiledWidget>;
@@ -152,7 +153,7 @@ export interface Compiler {
   /** Hot reload a mounted widget */
   reload(
     mounted: MountedWidget,
-    source: string,
+    source: string | VirtualProject,
     manifest: Manifest,
   ): Promise<void>;
 }

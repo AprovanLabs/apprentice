@@ -88,8 +88,34 @@ export {
 } from './images/index.js';
 
 // Transforms
-export { cdnTransformPlugin, generateImportMap } from './transforms/index.js';
-export type { CdnTransformOptions } from './transforms/index.js';
+export {
+  cdnTransformPlugin,
+  generateImportMap,
+  vfsPlugin,
+} from './transforms/index.js';
+export type {
+  CdnTransformOptions,
+  VFSPluginOptions,
+} from './transforms/index.js';
+
+// VFS
+export {
+  VFSStore,
+  createProjectFromFiles,
+  createSingleFileProject,
+  resolveEntry,
+  detectMainFile,
+  IndexedDBBackend,
+  LocalFSBackend,
+  S3Backend,
+} from './vfs/index.js';
+export type {
+  VirtualFile,
+  VirtualProject,
+  StorageBackend,
+  LocalFSConfig,
+  S3Config,
+} from './vfs/index.js';
 
 // Mount utilities
 export {

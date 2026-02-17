@@ -9,10 +9,13 @@ import type {
   MountOptions,
   ServiceProxy,
 } from './types.js';
+import type { VirtualProject } from './vfs/types.js';
+import { createSingleFileProject } from './vfs/project.js';
 import { getImageRegistry } from './images/registry.js';
 import { setCdnBaseUrl as setImageCdnBaseUrl } from './images/loader.js';
 import { setCdnBaseUrl as setTransformCdnBaseUrl } from './transforms/cdn.js';
 import { cdnTransformPlugin } from './transforms/cdn.js';
+import { vfsPlugin } from './transforms/vfs.js';
 import { createHttpServiceProxy } from './mount/bridge.js';
 import { mountEmbedded, reloadEmbedded } from './mount/embedded.js';
 import { mountIframe, reloadIframe } from './mount/iframe.js';
@@ -128,14 +131,17 @@ class PatchworkCompiler implements Compiler {
    * Compile widget source to ESM
    */
   async compile(
-    source: string,
+    source: string | VirtualProject,
     manifest: Manifest,
-    options: CompileOptions = {},
+    _options: CompileOptions = {},
   ): Promise<CompiledWidget> {
-    const { typescript = false } = options;
+    // Normalize input to VirtualProject (entry defined by project, defaults to main.tsx)
+    const project =
+      typeof source === 'string' ? createSingleFileProject(source) : source;
 
-    // Determine loader based on options (JavaScript-first)
-    const loader = typescript ? 'tsx' : 'jsx';
+    // Infer loader from entry file extension
+    const entryExt = project.entry.split('.').pop();
+    const loader = entryExt === 'ts' || entryExt === 'tsx' ? 'tsx' : 'jsx';
 
     // Get image from registry based on manifest
     const image = this.registry.get(manifest.image) || null;
@@ -162,12 +168,18 @@ class PatchworkCompiler implements Compiler {
     // Get import path aliases from image config (e.g., { '@/components/ui/*': '@packagedcn/react' })
     const aliases = image?.config.aliases || {};
 
+    // Get entry file content
+    const entryFile = project.files.get(project.entry);
+    if (!entryFile) {
+      throw new Error(`Entry file not found: ${project.entry}`);
+    }
+
     // Build with esbuild using image-provided configuration
     const result = await esbuild.build({
       stdin: {
-        contents: source,
+        contents: entryFile.content,
         loader,
-        sourcefile: `widget.${typescript ? 'tsx' : 'jsx'}`,
+        sourcefile: project.entry,
       },
       bundle: true,
       format,
@@ -183,6 +195,7 @@ class PatchworkCompiler implements Compiler {
       write: false,
       sourcemap: 'inline',
       plugins: [
+        vfsPlugin(project, { aliases }),
         cdnTransformPlugin({
           packages,
           globals,
@@ -228,7 +241,7 @@ class PatchworkCompiler implements Compiler {
    */
   async reload(
     mounted: MountedWidget,
-    source: string,
+    source: string | VirtualProject,
     manifest: Manifest,
   ): Promise<void> {
     // Compile new version
