@@ -1,6 +1,17 @@
+import { useState } from 'react';
 import type { DesignTokens } from '../../../types';
 import { SectionWrapper } from './SectionWrapper';
 import { SliderInput } from '../controls/SliderInput';
+
+// Common size presets
+const sizePresets: Record<string, string> = {
+  'auto': 'auto',
+  'full': '100%',
+  'fit': 'fit-content',
+  'min': 'min-content',
+  'max': 'max-content',
+  'screen': '100vh',
+};
 
 interface SizeSectionProps {
   expanded: boolean;
@@ -11,6 +22,85 @@ interface SizeSectionProps {
   hasChanges?: boolean;
 }
 
+// Component for size input with quick presets and slider
+function SizeInput({
+  label,
+  value,
+  property,
+  onApplyStyle,
+}: {
+  label: string;
+  value: string;
+  property: string;
+  onApplyStyle: (property: string, value: string) => void;
+}) {
+  const [showSlider, setShowSlider] = useState(false);
+  const numericValue = parseFloat(value) || 0;
+
+  // Check if current value matches a preset
+  const isPresetSelected = (presetValue: string) => {
+    return value.toLowerCase() === presetValue.toLowerCase();
+  };
+
+  return (
+    <div style={{ marginBottom: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+        <label style={{ fontSize: '10px', color: '#71717a' }}>{label}</label>
+        <button
+          onClick={() => setShowSlider(!showSlider)}
+          style={{
+            padding: '1px 4px',
+            borderRadius: '2px',
+            border: '1px solid #e4e4e7',
+            backgroundColor: showSlider ? '#18181b' : '#ffffff',
+            color: showSlider ? '#fafafa' : '#71717a',
+            fontSize: '8px',
+            cursor: 'pointer',
+          }}
+          title="Toggle custom size slider"
+        >
+          px
+        </button>
+      </div>
+      
+      {/* Quick presets */}
+      <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', marginBottom: showSlider ? '6px' : 0 }}>
+        {Object.entries(sizePresets).slice(0, 5).map(([key, presetValue]) => (
+          <button
+            key={key}
+            onClick={() => onApplyStyle(property, presetValue)}
+            style={{
+              padding: '2px 5px',
+              borderRadius: '3px',
+              border: '1px solid',
+              borderColor: isPresetSelected(presetValue) ? '#18181b' : '#e4e4e7',
+              backgroundColor: isPresetSelected(presetValue) ? '#18181b' : '#ffffff',
+              color: isPresetSelected(presetValue) ? '#fafafa' : '#18181b',
+              fontSize: '9px',
+              fontFamily: 'ui-monospace, monospace',
+              cursor: 'pointer',
+              transition: 'all 0.1s ease',
+            }}
+            title={presetValue}
+          >
+            {key}
+          </button>
+        ))}
+      </div>
+
+      {/* Slider for custom values */}
+      {showSlider && (
+        <SliderInput
+          value={numericValue}
+          min={0}
+          max={1000}
+          onChange={(v) => onApplyStyle(property, `${v}px`)}
+        />
+      )}
+    </div>
+  );
+}
+
 export function SizeSection({
   expanded,
   onToggle,
@@ -18,63 +108,57 @@ export function SizeSection({
   onApplyStyle,
   hasChanges = false,
 }: SizeSectionProps) {
-  const width = parseFloat(computedStyle.width) || 0;
-  const height = parseFloat(computedStyle.height) || 0;
-  const minWidth = parseFloat(computedStyle.minWidth) || 0;
-  const maxWidth = parseFloat(computedStyle.maxWidth) || 0;
-  const minHeight = parseFloat(computedStyle.minHeight) || 0;
-  const maxHeight = parseFloat(computedStyle.maxHeight) || 0;
+  const width = computedStyle.width;
+  const height = computedStyle.height;
+  const minWidth = computedStyle.minWidth;
+  const maxWidth = computedStyle.maxWidth;
+  const minHeight = computedStyle.minHeight;
+  const maxHeight = computedStyle.maxHeight;
 
   return (
     <SectionWrapper title="Size" expanded={expanded} onToggle={onToggle} hasChanges={hasChanges}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
-        <SliderInput
-          label="W"
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <SizeInput
+          label="Width"
           value={width}
-          min={0}
-          max={1000}
-          onChange={(v) => onApplyStyle('width', `${v}px`)}
+          property="width"
+          onApplyStyle={onApplyStyle}
         />
-        <SliderInput
-          label="H"
+        <SizeInput
+          label="Height"
           value={height}
-          min={0}
-          max={1000}
-          onChange={(v) => onApplyStyle('height', `${v}px`)}
+          property="height"
+          onApplyStyle={onApplyStyle}
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
-        <SliderInput
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <SizeInput
           label="Min W"
           value={minWidth}
-          min={0}
-          max={1000}
-          onChange={(v) => onApplyStyle('min-width', `${v}px`)}
+          property="min-width"
+          onApplyStyle={onApplyStyle}
         />
-        <SliderInput
+        <SizeInput
           label="Max W"
           value={maxWidth}
-          min={0}
-          max={2000}
-          onChange={(v) => onApplyStyle('max-width', `${v}px`)}
+          property="max-width"
+          onApplyStyle={onApplyStyle}
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-        <SliderInput
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <SizeInput
           label="Min H"
           value={minHeight}
-          min={0}
-          max={1000}
-          onChange={(v) => onApplyStyle('min-height', `${v}px`)}
+          property="min-height"
+          onApplyStyle={onApplyStyle}
         />
-        <SliderInput
+        <SizeInput
           label="Max H"
           value={maxHeight}
-          min={0}
-          max={2000}
-          onChange={(v) => onApplyStyle('max-height', `${v}px`)}
+          property="max-height"
+          onApplyStyle={onApplyStyle}
         />
       </div>
     </SectionWrapper>

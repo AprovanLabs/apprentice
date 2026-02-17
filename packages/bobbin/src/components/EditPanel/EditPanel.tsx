@@ -121,7 +121,7 @@ export function EditPanel({
   onReset,
 }: EditPanelProps) {
   const [expandedSections, setExpandedSections] = useState<Set<Section>>(
-    new Set(['layout', 'spacing', 'typography'])
+    new Set(['annotation', 'layout', 'spacing', 'typography'])
   );
 
   // Calculate which sections have changes for the current element
@@ -305,6 +305,17 @@ export function EditPanel({
 
       {/* Scrollable content */}
       <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
+        {/* Annotation section moved to top and default open */}
+        <AnnotationSection
+          expanded={expandedSections.has('annotation')}
+          onToggle={() => toggleSection('annotation')}
+          onAnnotate={actions.annotate}
+          existingAnnotation={
+            annotations.find((a) => a.elementPath === selectedElement.path)?.content
+          }
+          hasChanges={annotations.some((a) => a.elementPath === selectedElement.path)}
+        />
+        
         <LayoutSection
           expanded={expandedSections.has('layout')}
           onToggle={() => toggleSection('layout')}
@@ -358,16 +369,6 @@ export function EditPanel({
           onApplyStyle={actions.applyStyle}
           tokens={tokens}
           hasChanges={changedSections.has('effects')}
-        />
-        
-        <AnnotationSection
-          expanded={expandedSections.has('annotation')}
-          onToggle={() => toggleSection('annotation')}
-          onAnnotate={actions.annotate}
-          existingAnnotation={
-            annotations.find((a) => a.elementPath === selectedElement.path)?.content
-          }
-          hasChanges={annotations.some((a) => a.elementPath === selectedElement.path)}
         />
       </div>
     </div>

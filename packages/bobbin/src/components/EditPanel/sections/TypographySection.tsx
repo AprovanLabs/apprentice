@@ -1,6 +1,7 @@
 import type { DesignTokens } from '../../../types';
 import { SectionWrapper } from './SectionWrapper';
 import { TokenDropdown } from '../controls/TokenDropdown';
+import { QuickSelectDropdown } from '../controls/QuickSelectDropdown';
 import { ColorPicker } from '../controls/ColorPicker';
 import { ToggleGroup } from '../controls/ToggleGroup';
 
@@ -80,9 +81,10 @@ export function TypographySection({
         <label style={{ fontSize: '10px', color: '#71717a', marginBottom: '4px', display: 'block' }}>
           Font Size
         </label>
-        <TokenDropdown
+        <QuickSelectDropdown
           value={fontSize}
           tokens={tokens.fontSize}
+          quickKeys={['xs', 'sm', 'base', 'lg', 'xl', '2xl']}
           onChange={(value) => onApplyStyle('font-size', value)}
         />
       </div>
@@ -92,9 +94,10 @@ export function TypographySection({
         <label style={{ fontSize: '10px', color: '#71717a', marginBottom: '4px', display: 'block' }}>
           Font Weight
         </label>
-        <TokenDropdown
+        <QuickSelectDropdown
           value={fontWeight}
           tokens={tokens.fontWeight}
+          quickKeys={['light', 'normal', 'medium', 'semibold', 'bold']}
           onChange={(value) => onApplyStyle('font-weight', value)}
         />
       </div>
@@ -133,9 +136,10 @@ export function TypographySection({
         <label style={{ fontSize: '10px', color: '#71717a', marginBottom: '4px', display: 'block' }}>
           Line Height
         </label>
-        <TokenDropdown
+        <QuickSelectDropdown
           value={lineHeight}
           tokens={tokens.lineHeight}
+          quickKeys={['tight', 'snug', 'normal', 'relaxed']}
           onChange={(value) => onApplyStyle('line-height', value)}
         />
       </div>

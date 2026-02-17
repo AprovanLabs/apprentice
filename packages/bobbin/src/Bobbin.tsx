@@ -79,6 +79,7 @@ export function Bobbin(props: BobbinComponentProps) {
         <Inspector
           selectedElement={bobbin.selectedElement}
           onSelectElement={(el) => bobbin.selectElement(el)}
+          onClose={() => bobbin.setActivePanel(null)}
           zIndex={zIndex}
         />
       )}

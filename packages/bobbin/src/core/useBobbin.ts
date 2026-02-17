@@ -191,7 +191,10 @@ export function useBobbin(props: BobbinProps = {}) {
       null,
       clone.outerHTML,
     );
-  }, [selectedElement, changeTracker]);
+
+    // Select the newly duplicated element
+    selectElement(clone);
+  }, [selectedElement, changeTracker, selectElement]);
 
   const insertElement = useCallback(
     (direction: 'before' | 'after' | 'child', content = '') => {
@@ -219,8 +222,11 @@ export function useBobbin(props: BobbinProps = {}) {
         newEl.outerHTML,
         { direction },
       );
+
+      // Select the newly inserted element
+      selectElement(newEl);
     },
-    [selectedElement, changeTracker],
+    [selectedElement, changeTracker, selectElement],
   );
 
   const copyElement = useCallback(() => {
@@ -252,8 +258,11 @@ export function useBobbin(props: BobbinProps = {}) {
         clone.outerHTML,
         { source: 'paste', direction },
       );
+
+      // Select the newly pasted element
+      selectElement(clone);
     },
-    [selectedElement, clipboard, changeTracker],
+    [selectedElement, clipboard, changeTracker, selectElement],
   );
 
   const annotate = useCallback(

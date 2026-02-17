@@ -71,7 +71,15 @@ export function useElementSelection(options: UseElementSelectionOptions) {
 
   const handleClick = useCallback(
     (e: MouseEvent) => {
-      if (!enabled || !hoveredElement) return;
+      if (!enabled) return;
+
+      // Don't intercept clicks on bobbin UI elements
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-bobbin]')) {
+        return;
+      }
+
+      if (!hoveredElement) return;
 
       e.preventDefault();
       e.stopPropagation();
