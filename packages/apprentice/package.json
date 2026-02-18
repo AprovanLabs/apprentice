@@ -15,8 +15,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@aprovan/copilot-proxy": "workspace:*",
-    "@aprovan/patchwork": "workspace:*",
+    "@aprovan/copilot-proxy": "0.1.0",
+    "@aprovan/patchwork": "0.1.0",
     "@libsql/client": "^0.17.0",
     "@modelcontextprotocol/sdk": "^1.25.2",
     "chalk": "^5.4.1",
