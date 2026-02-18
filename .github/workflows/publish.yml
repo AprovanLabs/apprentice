@@ -1,0 +1,51 @@
+name: Publish Packages to NPM
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/images/**'
+      - 'packages/compiler/**'
+  workflow_dispatch:
+
+env:
+  HUSKY: 0
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build packages
+        run: pnpm run build
+
+      - name: Publish @aprovan/patchwork-compiler
+        run: pnpm publish --filter @aprovan/patchwork-compiler --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
+      - name: Publish @aprovan/patchwork-image-shadcn
+        run: pnpm publish --filter @aprovan/patchwork-image-shadcn --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
