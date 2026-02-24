@@ -12,6 +12,7 @@ APPRENTICE_HOME="${APPRENTICE_HOME:-$HOME/.apprentice}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 
+mkdir -p ~/.apprentice
 cp -f shell-init.sh config.yaml "$APPRENTICE_HOME/"
 cp -rf completions "$APPRENTICE_HOME/"
 

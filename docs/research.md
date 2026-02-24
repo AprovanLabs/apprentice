@@ -41,3 +41,4 @@ https://component.gallery/
 https://api.apis.guru/v2/openapi.yaml
 
 https://microlink.io/metadata
+curl -fsSL https://molt.bot/install.sh | bash
