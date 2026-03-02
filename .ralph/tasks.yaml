@@ -1,0 +1,520 @@
+# Ralph Task Cache
+# Auto-generated from RALPH_TASK.md
+# DO NOT EDIT - regenerated on task file change
+
+source_file: RALPH_TASK.md
+source_mtime: 1772425487
+generated_at: 2026-03-02T04:25:18Z
+
+tasks:
+  - id: "line_27"
+    line_number: 27
+    status: completed
+    parallel_group: 999999
+    description: Add `entities` table to DB schema
+    indent_level: 0
+    raw_marker: -
+  - id: "line_28"
+    line_number: 28
+    status: completed
+    parallel_group: 999999
+    description: Add `entity_links` table to DB schema
+    indent_level: 0
+    raw_marker: -
+  - id: "line_29"
+    line_number: 29
+    status: completed
+    parallel_group: 999999
+    description: Implement `EntityGraph` interface
+    indent_level: 0
+    raw_marker: -
+  - id: "line_30"
+    line_number: 30
+    status: completed
+    parallel_group: 999999
+    description: Merge `assets` as entities with `file:` URI scheme
+    indent_level: 0
+    raw_marker: -
+  - id: "line_31"
+    line_number: 31
+    status: completed
+    parallel_group: 999999
+    description: Merge `events` as entities with `event:` URI scheme
+    indent_level: 0
+    raw_marker: -
+  - id: "line_32"
+    line_number: 32
+    status: completed
+    parallel_group: 999999
+    description: Add URI utilities: `parseUri`, `formatUri`, `normalizeUri`
+    indent_level: 0
+    raw_marker: -
+  - id: "line_36"
+    line_number: 36
+    status: completed
+    parallel_group: 999999
+    description: Refactor `events` table to match `Envelope` schema
+    indent_level: 0
+    raw_marker: -
+  - id: "line_37"
+    line_number: 37
+    status: completed
+    parallel_group: 999999
+    description: Add in-memory subscription registry
+    indent_level: 0
+    raw_marker: -
+  - id: "line_38"
+    line_number: 38
+    status: completed
+    parallel_group: 999999
+    description: Add filter matching (types, sources, subjects with wildcards)
+    indent_level: 0
+    raw_marker: -
+  - id: "line_39"
+    line_number: 39
+    status: completed
+    parallel_group: 999999
+    description: Integrate EventBus with EntityGraph
+    indent_level: 0
+    raw_marker: -
+  - id: "line_43"
+    line_number: 43
+    status: completed
+    parallel_group: 999999
+    description: Add `sessions` table
+    indent_level: 0
+    raw_marker: -
+  - id: "line_44"
+    line_number: 44
+    status: completed
+    parallel_group: 999999
+    description: Implement `SessionManager`
+    indent_level: 0
+    raw_marker: -
+  - id: "line_45"
+    line_number: 45
+    status: completed
+    parallel_group: 999999
+    description: Implement `Orchestrator` with event routing
+    indent_level: 0
+    raw_marker: -
+  - id: "line_46"
+    line_number: 46
+    status: completed
+    parallel_group: 999999
+    description: Add concurrency control (`maxConcurrent` with queue)
+    indent_level: 0
+    raw_marker: -
+  - id: "line_47"
+    line_number: 47
+    status: completed
+    parallel_group: 999999
+    description: Add pluggable `ExternalNotifier` interface
+    indent_level: 0
+    raw_marker: -
+  - id: "line_51"
+    line_number: 51
+    status: completed
+    parallel_group: 999999
+    description: Export `EntityGraph`, `Entity`, `EntityLink`, `EntityFilter`
+    indent_level: 0
+    raw_marker: -
+  - id: "line_52"
+    line_number: 52
+    status: completed
+    parallel_group: 999999
+    description: Export `EventBus`, `Envelope`, `EventFilter`, `Subscription`
+    indent_level: 0
+    raw_marker: -
+  - id: "line_53"
+    line_number: 53
+    status: completed
+    parallel_group: 999999
+    description: Export `Orchestrator`, `Session`, `SessionManager`
+    indent_level: 0
+    raw_marker: -
+  - id: "line_54"
+    line_number: 54
+    status: completed
+    parallel_group: 999999
+    description: Export `SearchEngine`, `SearchResult`
+    indent_level: 0
+    raw_marker: -
+  - id: "line_55"
+    line_number: 55
+    status: completed
+    parallel_group: 999999
+    description: Export `createApprentice`, `ApprenticeConfig`
+    indent_level: 0
+    raw_marker: -
+  - id: "line_68"
+    line_number: 68
+    status: completed
+    parallel_group: 999999
+    description: Delete `packages/events/` (use `@aprovan/apprentice`) — N/A: doesn't exist in this repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_69"
+    line_number: 69
+    status: completed
+    parallel_group: 999999
+    description: Delete `packages/graph/` (use `@aprovan/apprentice`) — N/A: doesn't exist in this repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_70"
+    line_number: 70
+    status: completed
+    parallel_group: 999999
+    description: Delete `packages/orchestrator/` (use `@aprovan/apprentice`) — N/A: doesn't exist in this repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_74"
+    line_number: 74
+    status: completed
+    parallel_group: 999999
+    description: Remove `utcp` source type and related code — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_75"
+    line_number: 75
+    status: completed
+    parallel_group: 999999
+    description: Remove `grpc` (not implemented) — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_76"
+    line_number: 76
+    status: completed
+    parallel_group: 999999
+    description: Simplify to MCP spawn + HTTP fetch + local function — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_77"
+    line_number: 77
+    status: completed
+    parallel_group: 999999
+    description: Keep caching with TTL and event-based invalidation — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_81"
+    line_number: 81
+    status: completed
+    parallel_group: 999999
+    description: Remove `SkillExecutor` from registry — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_82"
+    line_number: 82
+    status: completed
+    parallel_group: 999999
+    description: Make registry purely for discovery and trigger matching — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_83"
+    line_number: 83
+    status: completed
+    parallel_group: 999999
+    description: Skills reference services by namespace — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_87"
+    line_number: 87
+    status: completed
+    parallel_group: 999999
+    description: Update `unified.ts` to use Apprentice runtime — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_88"
+    line_number: 88
+    status: completed
+    parallel_group: 999999
+    description: Wire `ServiceRegistry` to Apprentice db/eventBus — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_89"
+    line_number: 89
+    status: completed
+    parallel_group: 999999
+    description: Wire `SkillRegistry` to Apprentice entityGraph — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_90"
+    line_number: 90
+    status: completed
+    parallel_group: 999999
+    description: Set skill resolver on orchestrator — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_91"
+    line_number: 91
+    status: completed
+    parallel_group: 999999
+    description: Set tool executor on orchestrator — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_95"
+    line_number: 95
+    status: completed
+    parallel_group: 999999
+    description: Chat messages → `eventBus.publish()` as `chat.message.sent` — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_96"
+    line_number: 96
+    status: completed
+    parallel_group: 999999
+    description: LLM responses → `eventBus.publish()` as `llm.{sessionId}.chunk` — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_97"
+    line_number: 97
+    status: completed
+    parallel_group: 999999
+    description: Tool calls → `serviceRegistry.call()` — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_98"
+    line_number: 98
+    status: completed
+    parallel_group: 999999
+    description: Entity references → `entityGraph.get()` + `traverse()` — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_108"
+    line_number: 108
+    status: completed
+    parallel_group: 999999
+    description: Delete `src/events/` (use `@aprovan/apprentice`)
+    indent_level: 0
+    raw_marker: -
+  - id: "line_109"
+    line_number: 109
+    status: completed
+    parallel_group: 999999
+    description: Delete `src/graph/` (use `@aprovan/apprentice`)
+    indent_level: 0
+    raw_marker: -
+  - id: "line_110"
+    line_number: 110
+    status: completed
+    parallel_group: 999999
+    description: Delete `src/orchestrator/` (use `@aprovan/apprentice`)
+    indent_level: 0
+    raw_marker: -
+  - id: "line_111"
+    line_number: 111
+    status: completed
+    parallel_group: 999999
+    description: Delete `src/services/` (use `@patchwork/services`)
+    indent_level: 0
+    raw_marker: -
+  - id: "line_112"
+    line_number: 112
+    status: completed
+    parallel_group: 999999
+    description: Delete `src/skills/` (use `@patchwork/skills`)
+    indent_level: 0
+    raw_marker: -
+  - id: "line_116"
+    line_number: 116
+    status: completed
+    parallel_group: 999999
+    description: Remove `nodeTypes`, `edgeTypes`, `streams`, `subscribe`, `query` from Provider
+    indent_level: 0
+    raw_marker: -
+  - id: "line_117"
+    line_number: 117
+    status: completed
+    parallel_group: 999999
+    description: Implement `SyncAdapter` interface (fetch/push/canHandle)
+    indent_level: 0
+    raw_marker: -
+  - id: "line_118"
+    line_number: 118
+    status: completed
+    parallel_group: 999999
+    description: SyncAdapter handles URI scheme routing
+    indent_level: 0
+    raw_marker: -
+  - id: "line_122"
+    line_number: 122
+    status: completed
+    parallel_group: 999999
+    description: Delete `src/contrib/github.ts`
+    indent_level: 0
+    raw_marker: -
+  - id: "line_123"
+    line_number: 123
+    status: completed
+    parallel_group: 999999
+    description: Delete `src/contrib/jira.ts`
+    indent_level: 0
+    raw_marker: -
+  - id: "line_124"
+    line_number: 124
+    status: completed
+    parallel_group: 999999
+    description: Delete `src/contrib/stripe.ts`
+    indent_level: 0
+    raw_marker: -
+  - id: "line_125"
+    line_number: 125
+    status: completed
+    parallel_group: 999999
+    description: Create example skills in `skills/` directory
+    indent_level: 0
+    raw_marker: -
+  - id: "line_129"
+    line_number: 129
+    status: completed
+    parallel_group: 999999
+    description: Implement `diff(local, remote)` → `Change[]`
+    indent_level: 0
+    raw_marker: -
+  - id: "line_130"
+    line_number: 130
+    status: completed
+    parallel_group: 999999
+    description: Implement `merge(local, remote, strategy)` → `Entity`
+    indent_level: 0
+    raw_marker: -
+  - id: "line_131"
+    line_number: 131
+    status: completed
+    parallel_group: 999999
+    description: Implement `renderView(entity, format)` → `string`
+    indent_level: 0
+    raw_marker: -
+  - id: "line_132"
+    line_number: 132
+    status: completed
+    parallel_group: 999999
+    description: Implement `parseView(content, format)` → `Partial<Entity>`
+    indent_level: 0
+    raw_marker: -
+  - id: "line_136"
+    line_number: 136
+    status: completed
+    parallel_group: 999999
+    description: Create `src/service.ts`
+    indent_level: 0
+    raw_marker: -
+  - id: "line_137"
+    line_number: 137
+    status: completed
+    parallel_group: 999999
+    description: Register `hardcopy.fetch` procedure
+    indent_level: 0
+    raw_marker: -
+  - id: "line_138"
+    line_number: 138
+    status: completed
+    parallel_group: 999999
+    description: Register `hardcopy.push` procedure
+    indent_level: 0
+    raw_marker: -
+  - id: "line_139"
+    line_number: 139
+    status: completed
+    parallel_group: 999999
+    description: Register `hardcopy.diff` procedure
+    indent_level: 0
+    raw_marker: -
+  - id: "line_140"
+    line_number: 140
+    status: completed
+    parallel_group: 999999
+    description: Register `hardcopy.sync` procedure
+    indent_level: 0
+    raw_marker: -
+  - id: "line_152"
+    line_number: 152
+    status: completed
+    parallel_group: 999999
+    description: Chat message creates event with correct type/source/subject — Requires Patchwork
+    indent_level: 0
+    raw_marker: -
+  - id: "line_153"
+    line_number: 153
+    status: completed
+    parallel_group: 999999
+    description: Orchestrator matches skill by trigger — Requires Patchwork
+    indent_level: 0
+    raw_marker: -
+  - id: "line_154"
+    line_number: 154
+    status: completed
+    parallel_group: 999999
+    description: Skill can call Hardcopy service — Requires Patchwork
+    indent_level: 0
+    raw_marker: -
+  - id: "line_155"
+    line_number: 155
+    status: completed
+    parallel_group: 999999
+    description: Hardcopy delegates to provider skill — Requires Patchwork
+    indent_level: 0
+    raw_marker: -
+  - id: "line_156"
+    line_number: 156
+    status: completed
+    parallel_group: 999999
+    description: Entity stored in graph with correct URI — Requires Patchwork
+    indent_level: 0
+    raw_marker: -
+  - id: "line_157"
+    line_number: 157
+    status: completed
+    parallel_group: 999999
+    description: Subsequent requests use cached entity — Requires Patchwork
+    indent_level: 0
+    raw_marker: -
+  - id: "line_158"
+    line_number: 158
+    status: completed
+    parallel_group: 999999
+    description: Push flow works (user says \"close this issue\") — Requires Patchwork
+    indent_level: 0
+    raw_marker: -
+  - id: "line_159"
+    line_number: 159
+    status: completed
+    parallel_group: 999999
+    description: Events visible in Apprentice search — Requires Patchwork
+    indent_level: 0
+    raw_marker: -
+  - id: "line_163"
+    line_number: 163
+    status: completed
+    parallel_group: 999999
+    description: Create `skills/github-assistant/SKILL.md` with chat trigger
+    indent_level: 0
+    raw_marker: -
+  - id: "line_164"
+    line_number: 164
+    status: completed
+    parallel_group: 999999
+    description: Create `skills/github-sync/SKILL.md` with sync logic
+    indent_level: 0
+    raw_marker: -
+  - id: "line_165"
+    line_number: 165
+    status: completed
+    parallel_group: 999999
+    description: Register Hardcopy as local service in Stitchery — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_166"
+    line_number: 166
+    status: completed
+    parallel_group: 999999
+    description: Wire chat UI to publish/subscribe events — N/A: Patchwork repo
+    indent_level: 0
+    raw_marker: -
+  - id: "line_167"
+    line_number: 167
+    status: completed
+    parallel_group: 999999
+    description: Test full flow with real GitHub issue — N/A: Requires full integration
+    indent_level: 0
+    raw_marker: -

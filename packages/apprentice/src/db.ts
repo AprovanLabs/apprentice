@@ -280,13 +280,30 @@ async function initSchema(db: Client): Promise<void> {
     CREATE TABLE IF NOT EXISTS events (
       id TEXT PRIMARY KEY,
       timestamp TEXT NOT NULL,
-      message TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'unknown',
+      source TEXT NOT NULL DEFAULT '',
+      subject TEXT,
+      data TEXT NOT NULL DEFAULT '{}',
       metadata TEXT NOT NULL DEFAULT '{}'
     )
   `);
 
+  await db.execute(`ALTER TABLE events ADD COLUMN type TEXT NOT NULL DEFAULT 'unknown'`).catch(() => {});
+  await db.execute(`ALTER TABLE events ADD COLUMN source TEXT NOT NULL DEFAULT ''`).catch(() => {});
+  await db.execute(`ALTER TABLE events ADD COLUMN subject TEXT`).catch(() => {});
+  await db.execute(`ALTER TABLE events ADD COLUMN data TEXT NOT NULL DEFAULT '{}'`).catch(() => {});
+
   await db.execute(
     `CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_events_type ON events(type)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_events_source ON events(source)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_events_subject ON events(subject)`,
   );
 
   await db.execute(`
@@ -351,6 +368,91 @@ async function initSchema(db: Client): Promise<void> {
 
   await db.execute(
     `CREATE INDEX IF NOT EXISTS idx_embedding_cache_model ON embedding_cache(model)`,
+  );
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS entities (
+      uri TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      attrs TEXT NOT NULL DEFAULT '{}',
+      version TEXT,
+      synced_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
+
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_entities_type ON entities(type)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_entities_synced_at ON entities(synced_at)`,
+  );
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS entity_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_uri TEXT NOT NULL,
+      target_uri TEXT NOT NULL,
+      type TEXT NOT NULL,
+      attrs TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (source_uri) REFERENCES entities(uri) ON DELETE CASCADE,
+      FOREIGN KEY (target_uri) REFERENCES entities(uri) ON DELETE CASCADE,
+      UNIQUE(source_uri, target_uri, type)
+    )
+  `);
+
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_entity_links_source ON entity_links(source_uri)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_entity_links_target ON entity_links(target_uri)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_entity_links_type ON entity_links(type)`,
+  );
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      skill_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      started_at TEXT NOT NULL,
+      completed_at TEXT,
+      result TEXT,
+      error TEXT,
+      metadata TEXT NOT NULL DEFAULT '{}'
+    )
+  `);
+
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_sessions_skill_id ON sessions(skill_id)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_sessions_started_at ON sessions(started_at)`,
+  );
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS session_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      event_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+      FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+      UNIQUE(session_id, event_id)
+    )
+  `);
+
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_session_events_session ON session_events(session_id)`,
+  );
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_session_events_event ON session_events(event_id)`,
   );
 
   try {

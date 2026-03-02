@@ -23,3 +23,6 @@ _bmad-output
 .github/agents/bmd*
 .opencode/agent/bmad*
 .opencode/command/bmad*
+
+# Ralph config (may contain API key)
+.cursor/ralph-config.json
