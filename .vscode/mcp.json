@@ -4,27 +4,6 @@
       "command": "node",
       "args": ["packages/apprentice/dist/mcp-server.js"],
       "env": {}
-    },
-    "hardcopy": {
-      "command": "node",
-      "args": ["../hardcopy/dist/cli.js", "mcp-serve"]
-    },
-    "git-mcp-server": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["@cyanheads/git-mcp-server@latest"],
-      "env": {
-        "MCP_TRANSPORT_TYPE": "stdio",
-        "MCP_LOG_LEVEL": "info",
-        "LOGS_DIR": "~/Users/jsampson/Documents/JacobSampson/patchwork/apps/chat/workspaces/logs",
-        "GIT_USERNAME": "JacobSampson",
-        "GIT_EMAIL": "jacob.samps@gmail.com",
-        "GIT_SIGN_COMMITS": "false"
-      }
-    },
-    "github": {
-      "type": "http",
-      "url": "https://api.githubcopilot.com/mcp/"
     }
   }
 }

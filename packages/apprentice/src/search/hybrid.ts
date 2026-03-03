@@ -1,6 +1,5 @@
 import type { Client } from '@libsql/client';
 import type { EmbeddingProvider } from '../embeddings/types';
-import type { Event } from '../types';
 import type {
   SearchOptions,
   SearchResult,
@@ -438,7 +437,11 @@ export async function search(
     await Promise.all(
       paginatedResults.map(async (result) => {
         if (result.type === 'event') {
-          result.context = await getRelatedContext(db, result.item as Event, {
+          const eventResult = result as Extract<
+            (typeof paginatedResults)[number],
+            { type: 'event' }
+          >;
+          eventResult.context = await getRelatedContext(db, eventResult.item, {
             strategy: options.strategy,
             windowSeconds: options.windowSeconds,
             limit: options.relatedLimit,
