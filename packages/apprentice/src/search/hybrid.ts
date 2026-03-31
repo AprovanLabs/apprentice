@@ -44,15 +44,11 @@ function extractQueryTerms(query: string): string[] {
   const terms: string[] = [];
   // Match quoted phrases or individual words
   const regex = /"([^"]+)"|(\S+)/g;
+  const stopWords = new Set(['the', 'a', 'an', 'is', 'of', 'to', 'in']);
   let match;
   while ((match = regex.exec(query)) !== null) {
-    if (!match[1] || !match[2]) continue;
-    const term = (match[1] || match[2]).toLowerCase();
-    // Skip common stop words and very short terms
-    if (
-      term.length > 1 &&
-      !['the', 'a', 'an', 'is', 'of', 'to', 'in'].includes(term)
-    ) {
+    const term = (match[1] ?? match[2]).toLowerCase();
+    if (term.length > 1 && !stopWords.has(term)) {
       terms.push(term);
     }
   }
@@ -87,7 +83,7 @@ function calculateRrfScore(rank: number, weight: number): number {
   return weight / (RRF_K + rank);
 }
 
-function normalizeFtsEventScores(results: FtsEventResult[]): FtsEventResult[] {
+function normalizeFtsScores<T extends { score: number }>(results: T[]): T[] {
   if (results.length === 0) return results;
   const maxScore = Math.max(...results.map((r) => r.score));
   const minScore = Math.min(...results.map((r) => r.score));
@@ -95,25 +91,9 @@ function normalizeFtsEventScores(results: FtsEventResult[]): FtsEventResult[] {
   return results.map((r) => ({ ...r, score: (r.score - minScore) / range }));
 }
 
-function normalizeFtsAssetScores(results: FtsAssetResult[]): FtsAssetResult[] {
-  if (results.length === 0) return results;
-  const maxScore = Math.max(...results.map((r) => r.score));
-  const minScore = Math.min(...results.map((r) => r.score));
-  const range = maxScore - minScore || 1;
-  return results.map((r) => ({ ...r, score: (r.score - minScore) / range }));
-}
-
-function normalizeVectorEventResults(
-  results: VectorEventResult[],
-): Array<VectorEventResult & { score: number }> {
-  if (results.length === 0) return [];
-  return results.map((r) => ({ ...r, score: 1 - r.distance / 2 }));
-}
-
-function normalizeVectorAssetResults(
-  results: VectorAssetResult[],
-): Array<VectorAssetResult & { score: number }> {
-  if (results.length === 0) return [];
+function normalizeVectorResults<T extends { distance: number }>(
+  results: T[],
+): Array<T & { score: number }> {
   return results.map((r) => ({ ...r, score: 1 - r.distance / 2 }));
 }
 
@@ -154,13 +134,8 @@ export async function search(
   );
   const canUseVector = canUseVectorEvents || canUseVectorAssets;
 
-  let effectiveMode: SearchMode = mode;
-  if (mode === 'vector' && !canUseVector) {
-    effectiveMode = 'fts';
-  }
-  if (mode === 'hybrid' && !canUseVector) {
-    effectiveMode = 'fts';
-  }
+  const effectiveMode: SearchMode =
+    (mode === 'vector' || mode === 'hybrid') && !canUseVector ? 'fts' : mode;
 
   const searchOpts = {
     limit: limit * 2,
@@ -176,13 +151,14 @@ export async function search(
   if (scope.events) {
     let ftsEventResults: FtsEventResult[] = [];
     let vectorEventResults: VectorEventResult[] = [];
+    let resolvedEventMode = effectiveMode;
 
-    if (effectiveMode === 'fts' || effectiveMode === 'hybrid') {
+    if (resolvedEventMode === 'fts' || resolvedEventMode === 'hybrid') {
       ftsEventResults = await searchEventsFts(db, query, searchOpts);
     }
 
     if (
-      (effectiveMode === 'vector' || effectiveMode === 'hybrid') &&
+      (resolvedEventMode === 'vector' || resolvedEventMode === 'hybrid') &&
       embeddingProvider &&
       canUseVectorEvents
     ) {
@@ -195,14 +171,14 @@ export async function search(
         );
       } catch (error) {
         console.warn('Vector event search failed:', error);
-        if (effectiveMode === 'vector') {
-          effectiveMode = 'fts';
+        if (resolvedEventMode === 'vector') {
+          resolvedEventMode = 'fts';
           ftsEventResults = await searchEventsFts(db, query, searchOpts);
         }
       }
     }
 
-    if (effectiveMode === 'fts' || vectorEventResults.length === 0) {
+    if (resolvedEventMode === 'fts' || vectorEventResults.length === 0) {
       results.push(
         ...ftsEventResults.map((r) => ({
           type: 'event' as const,
@@ -212,8 +188,8 @@ export async function search(
           ftsScore: r.score,
         })),
       );
-    } else if (effectiveMode === 'vector' || ftsEventResults.length === 0) {
-      const normalized = normalizeVectorEventResults(vectorEventResults);
+    } else if (resolvedEventMode === 'vector' || ftsEventResults.length === 0) {
+      const normalized = normalizeVectorResults(vectorEventResults);
       results.push(
         ...normalized.map((r) => ({
           type: 'event' as const,
@@ -237,7 +213,7 @@ export async function search(
         }
       >();
 
-      const normalizedFts = normalizeFtsEventScores(ftsEventResults);
+      const normalizedFts = normalizeFtsScores(ftsEventResults);
       normalizedFts.forEach((result, rank) => {
         // Calculate term match ratio for this result
         const matchRatio = calculateTermMatchRatio(
@@ -256,7 +232,7 @@ export async function search(
         });
       });
 
-      const normalizedVector = normalizeVectorEventResults(vectorEventResults);
+      const normalizedVector = normalizeVectorResults(vectorEventResults);
       normalizedVector.forEach((result, rank) => {
         const existing = eventScores.get(result.event.id);
         // Also calculate boost for vector-only results
@@ -307,13 +283,14 @@ export async function search(
   if (scope.assets) {
     let ftsAssetResults: FtsAssetResult[] = [];
     let vectorAssetResults: VectorAssetResult[] = [];
+    let resolvedAssetMode = effectiveMode;
 
-    if (effectiveMode === 'fts' || effectiveMode === 'hybrid') {
+    if (resolvedAssetMode === 'fts' || resolvedAssetMode === 'hybrid') {
       ftsAssetResults = await searchAssetsFts(db, query, searchOpts);
     }
 
     if (
-      (effectiveMode === 'vector' || effectiveMode === 'hybrid') &&
+      (resolvedAssetMode === 'vector' || resolvedAssetMode === 'hybrid') &&
       embeddingProvider &&
       canUseVectorAssets
     ) {
@@ -326,14 +303,14 @@ export async function search(
         );
       } catch (error) {
         console.warn('Vector asset search failed:', error);
-        if (effectiveMode === 'vector') {
-          effectiveMode = 'fts';
+        if (resolvedAssetMode === 'vector') {
+          resolvedAssetMode = 'fts';
           ftsAssetResults = await searchAssetsFts(db, query, searchOpts);
         }
       }
     }
 
-    if (effectiveMode === 'fts' || vectorAssetResults.length === 0) {
+    if (resolvedAssetMode === 'fts' || vectorAssetResults.length === 0) {
       results.push(
         ...ftsAssetResults.map((r) => ({
           type: 'asset' as const,
@@ -343,8 +320,8 @@ export async function search(
           ftsScore: r.score,
         })),
       );
-    } else if (effectiveMode === 'vector' || ftsAssetResults.length === 0) {
-      const normalized = normalizeVectorAssetResults(vectorAssetResults);
+    } else if (resolvedAssetMode === 'vector' || ftsAssetResults.length === 0) {
+      const normalized = normalizeVectorResults(vectorAssetResults);
       results.push(
         ...normalized.map((r) => ({
           type: 'asset' as const,
@@ -368,7 +345,7 @@ export async function search(
         }
       >();
 
-      const normalizedFts = normalizeFtsAssetScores(ftsAssetResults);
+      const normalizedFts = normalizeFtsScores(ftsAssetResults);
       normalizedFts.forEach((result, rank) => {
         // For assets, check both key and id for term matches
         const searchText = `${result.asset.id} ${result.asset.key}`;
@@ -385,7 +362,7 @@ export async function search(
         });
       });
 
-      const normalizedVector = normalizeVectorAssetResults(vectorAssetResults);
+      const normalizedVector = normalizeVectorResults(vectorAssetResults);
       normalizedVector.forEach((result, rank) => {
         const existing = assetScores.get(result.asset.id);
         const searchText = `${result.asset.id} ${result.asset.key}`;

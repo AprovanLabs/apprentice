@@ -117,5 +117,5 @@ export function isAIAvailable(): boolean {
   return !!process.env[envVar || ''];
 }
 
-// Initialize config on module load
+// Initialize with defaults on module load (no side effects — reads only process.env)
 loadAIConfig();

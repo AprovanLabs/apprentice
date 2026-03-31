@@ -1,4 +1,5 @@
-import type { Event, Asset } from '../types';
+import type { Event } from '../types/event';
+import type { Asset } from '../types/asset';
 
 export type SearchMode = 'fts' | 'vector' | 'hybrid';
 

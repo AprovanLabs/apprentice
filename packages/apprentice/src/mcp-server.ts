@@ -11,7 +11,8 @@ import { ensureSchema, getDb } from './db';
 import { loadUserConfig } from './config';
 import { loadEmbeddingConfig, getEmbeddingProvider } from './embeddings';
 import { search, type SearchMode } from './search';
-import type { Event, Asset, AssetRelation } from './types';
+import type { Event } from './types/event';
+import type { Asset, AssetRelation } from './types/asset';
 
 import { getAsset } from './assets/retrieval';
 import { executeAsset } from './assets/executor';

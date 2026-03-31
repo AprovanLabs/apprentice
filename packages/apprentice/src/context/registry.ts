@@ -1,5 +1,5 @@
 import { getDb } from '../db';
-import type { Context, ContextInput } from '../types';
+import type { Context, ContextInput } from '../types/context';
 import { existsSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
@@ -303,7 +303,11 @@ export async function addPathToContext(
     args: [JSON.stringify(updatedMounts), contextId],
   });
 
-  return (await getContext(contextId))!;
+  const updated = await getContext(contextId);
+  if (!updated) {
+    throw new Error(`Context not found after update: ${contextId}`);
+  }
+  return updated;
 }
 
 export async function removePathFromContext(
@@ -343,5 +347,9 @@ export async function removePathFromContext(
     args: [JSON.stringify(updatedMounts), contextId],
   });
 
-  return (await getContext(contextId))!;
+  const updated = await getContext(contextId);
+  if (!updated) {
+    throw new Error(`Context not found after update: ${contextId}`);
+  }
+  return updated;
 }

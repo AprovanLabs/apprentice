@@ -1,6 +1,7 @@
 import { getDb } from '../db';
 import { join } from 'node:path';
-import type { Asset, AssetId, Context } from '../types';
+import type { Asset, AssetId } from '../types/asset';
+import type { Context } from '../types/context';
 import { getContext } from '../context';
 import { getContentByHash } from './content';
 

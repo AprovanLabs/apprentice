@@ -3,11 +3,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir, platform } from 'node:os';
 import { join } from 'node:path';
-import { load } from 'js-yaml';
+import { parse as parseYaml } from 'yaml';
 import { config as loadDotenv } from './utils/dotenv';
-import lodash from 'lodash';
-
-const { merge, cloneDeepWith } = lodash;
 
 // Load .env file if it exists (before any other initialization)
 const APPRENTICE_HOME =
@@ -199,9 +196,9 @@ export interface UserConfig {
 export function loadUserConfig(): DefaultConfig {
   try {
     const content = readFileSync(paths.configFile, 'utf-8');
-    const parsed = load(content) as UserConfig;
+    const parsed = parseYaml(content) as UserConfig;
     const expanded = expandEnvVars(parsed) as UserConfig;
-    return merge({}, defaultConfig, expanded);
+    return deepMerge(defaultConfig, expanded) as DefaultConfig;
   } catch (error) {
     console.warn(`Failed to parse config: ${error}`);
     return defaultConfig;
@@ -209,12 +206,51 @@ export function loadUserConfig(): DefaultConfig {
 }
 
 /**
+ * Deep merge two objects, with source values overriding target values
+ */
+function deepMerge(target: unknown, source: unknown): unknown {
+  if (
+    source === null ||
+    source === undefined ||
+    typeof source !== 'object' ||
+    Array.isArray(source)
+  ) {
+    return source !== undefined ? source : target;
+  }
+  if (
+    target === null ||
+    target === undefined ||
+    typeof target !== 'object' ||
+    Array.isArray(target)
+  ) {
+    return source;
+  }
+  const result = { ...target } as Record<string, unknown>;
+  for (const key of Object.keys(source as Record<string, unknown>)) {
+    result[key] = deepMerge(
+      (target as Record<string, unknown>)[key],
+      (source as Record<string, unknown>)[key],
+    );
+  }
+  return result;
+}
+
+/**
  * Recursively expand ${VAR} patterns with environment variable values
  */
 function expandEnvVars(obj: unknown): unknown {
-  return cloneDeepWith(obj, (value) =>
-    typeof value === 'string'
-      ? value.replace(/\$\{(\w+)\}/g, (_, name) => process.env[name] || '')
-      : undefined,
-  );
+  if (typeof obj === 'string') {
+    return obj.replace(/\$\{(\w+)\}/g, (_, name) => process.env[name] || '');
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(expandEnvVars);
+  }
+  if (obj !== null && typeof obj === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+      result[key] = expandEnvVars(value);
+    }
+    return result;
+  }
+  return obj;
 }

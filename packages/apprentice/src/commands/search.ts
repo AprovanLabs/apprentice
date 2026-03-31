@@ -3,7 +3,9 @@ import { getDb } from '../db';
 import { loadUserConfig } from '../config';
 import { getEmbeddingProvider } from '../embeddings';
 import { search, type SearchMode, type SearchResponse } from '../search';
-import type { Event, Asset, Metadata } from '../types';
+import type { Event } from '../types/event';
+import type { Asset } from '../types/asset';
+import type { Metadata } from '../types/metadata';
 
 interface SearchOptions {
   limit?: number;

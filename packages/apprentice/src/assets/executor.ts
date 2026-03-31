@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { chmod, accessSync, constants } from 'node:fs';
 import { dirname } from 'node:path';
 import { promisify } from 'node:util';
-import type { AssetId } from '../types';
+import type { AssetId } from '../types/asset';
 import { getAsset, resolveAssetPath } from './retrieval';
 import { getContext } from '../context';
 

@@ -13,26 +13,12 @@ export interface OpenAICompatibleTransport {
   chatCompletionsPath: string;
 }
 
-export function isProviderConfigured(
-  provider: string,
-  providerConfig: AIProviderConfig,
-): Promise<boolean> {
-  switch (provider.trim().toLowerCase()) {
-    case 'ollama':
-      return Promise.resolve(true);
-    case 'copilot':
-      // Use sync version for backward compatibility
-      // Callers needing full keychain check should use isProviderConfiguredAsync
-      return isCopilotConfigured();
-    default:
-      return Promise.resolve(!!providerConfig.apiKey);
-  }
-}
-
 /**
- * Async version that checks keychain storage
+ * Returns true if the given provider is configured and ready to use.
+ * For copilot, checks keychain/token storage.
+ * Never throws — configuration errors surface as `false`.
  */
-export async function isProviderConfiguredAsync(
+export async function isProviderConfigured(
   provider: string,
   providerConfig: AIProviderConfig,
 ): Promise<boolean> {
@@ -59,6 +45,9 @@ export function getProviderConfigHint(provider: string): string {
 
 /**
  * Returns a transport for calling an OpenAI-compatible Chat Completions API.
+ *
+ * @throws {Error} If the copilot provider is selected but no OAuth token is available.
+ *   Callers should catch this and surface a user-friendly message (e.g. "Run 'apr connect copilot'").
  */
 export async function getOpenAICompatibleTransport(
   provider: string,
@@ -94,39 +83,3 @@ export async function getOpenAICompatibleTransport(
   };
 }
 
-/**
- * Async version that supports keychain storage for copilot
- */
-export async function getOpenAICompatibleTransportAsync(
-  provider: string,
-  providerConfig: AIProviderConfig,
-): Promise<OpenAICompatibleTransport> {
-  if (provider === 'copilot') {
-    const oauthToken = providerConfig.apiKey || (await getOAuthToken());
-    if (!oauthToken) {
-      throw new Error(
-        "GitHub Copilot not connected. Run 'apr connect copilot'.",
-      );
-    }
-
-    return {
-      baseURL: providerConfig.baseURL || COPILOT_API_BASE,
-      fetch: createCopilotFetch(oauthToken),
-      headers: {},
-      chatCompletionsPath: '/chat/completions',
-    };
-  }
-
-  // Default: plain fetch + optional Bearer auth
-  return {
-    baseURL: providerConfig.baseURL || '',
-    fetch,
-    headers: providerConfig.apiKey
-      ? {
-          Authorization: `Bearer ${providerConfig.apiKey}`,
-          ...(providerConfig.headers || {}),
-        }
-      : { ...(providerConfig.headers || {}) },
-    chatCompletionsPath: '/chat/completions',
-  };
-}

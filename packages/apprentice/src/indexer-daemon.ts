@@ -18,6 +18,18 @@ import {
 // WAL checkpoint interval - every 5 minutes
 const WAL_CHECKPOINT_INTERVAL_MS = 5 * 60 * 1000;
 
+async function withErrorLog<T>(
+  label: string,
+  fn: () => Promise<T>,
+): Promise<T | undefined> {
+  try {
+    return await fn();
+  } catch (err) {
+    console.error(`${label} error:`, err);
+    return undefined;
+  }
+}
+
 async function generateEventEmbeddings(batchSize: number): Promise<number> {
   const config = getEmbeddingConfig();
   if (!config.enabled) {
@@ -124,64 +136,52 @@ export async function main(): Promise<void> {
   await runIndexerCycle();
 
   if (chatImportEnabled) {
-    try {
+    await withErrorLog('Chat import', async () => {
       const importResults = await runChatImport(adapters);
       const total = Object.values(importResults).reduce((a, b) => a + b, 0);
       if (total > 0) {
         console.log(`Chat import: ${total} messages`);
       }
-    } catch (err) {
-      console.error('Chat import error:', err);
-    }
+    });
   }
 
-  setInterval(async () => {
-    try {
-      await runIndexerCycle();
-    } catch (err) {
-      console.error('Indexer error:', err);
-    }
-  }, config.indexerIntervalMs);
+  setInterval(
+    () => withErrorLog('Indexer', runIndexerCycle),
+    config.indexerIntervalMs,
+  );
 
   if (chatImportEnabled) {
-    setInterval(async () => {
-      try {
+    setInterval(() => {
+      withErrorLog('Chat import', async () => {
         const results = await runChatImport(adapters);
         const total = Object.values(results).reduce((a, b) => a + b, 0);
         if (total > 0) {
           console.log(`Chat import: ${total} messages`);
         }
-      } catch (err) {
-        console.error('Chat import error:', err);
-      }
+      });
     }, chatImportInterval);
   }
 
   // Periodic WAL checkpoint to prevent unbounded WAL growth
-  setInterval(async () => {
-    try {
+  setInterval(() => {
+    withErrorLog('WAL checkpoint', async () => {
       const result = await checkpoint('PASSIVE');
       if (result && result.walPagesWritten > 0) {
         console.log(
           `WAL checkpoint: ${result.walPagesWritten}/${result.walPagesTotal} pages`,
         );
       }
-    } catch (err) {
-      console.error('WAL checkpoint error:', err);
-    }
+    });
   }, WAL_CHECKPOINT_INTERVAL_MS);
 
-  process.on('SIGINT', async () => {
+  const shutdown = async () => {
     console.log('\nShutting down indexer...');
     await closeDb();
     process.exit(0);
-  });
+  };
 
-  process.on('SIGTERM', async () => {
-    console.log('\nShutting down indexer...');
-    await closeDb();
-    process.exit(0);
-  });
+  process.on('SIGINT', () => { shutdown().catch(console.error); });
+  process.on('SIGTERM', () => { shutdown().catch(console.error); });
 }
 
 const entryFile = process.argv[1] ?? '';

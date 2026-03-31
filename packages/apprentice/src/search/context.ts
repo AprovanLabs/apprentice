@@ -1,5 +1,6 @@
 import type { Client } from '@libsql/client';
-import type { Event, Asset } from '../types';
+import type { Event } from '../types/event';
+import type { Asset } from '../types/asset';
 import type { RelatedContextOptions, RelatedContextResult } from './types';
 
 const DEFAULT_WINDOW_SECONDS = 60;

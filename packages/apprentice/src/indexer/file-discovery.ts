@@ -1,6 +1,6 @@
 import { glob } from 'glob';
 import { lstat } from 'node:fs/promises';
-import type { Context } from '../types';
+import type { Context } from '../types/context';
 
 export interface DiscoveredFile {
   /** Key for the asset (may include mount prefix for mounted paths) */

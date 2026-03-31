@@ -1,9 +1,24 @@
-export interface PlatformAdapter {
+/**
+ * Synchronous state queries for a platform connection.
+ * Safe to call at any time without awaiting.
+ */
+export interface PlatformState {
   readonly platform: 'discord' | 'slack' | 'teams';
+  isConnected(): boolean;
+}
 
+/**
+ * Async operations for interacting with a platform.
+ * All methods must be awaited; callers should handle rejections.
+ *
+ * Lifecycle:
+ *   connect() → sendMessage/editMessage/deleteMessage/etc → disconnect()
+ *
+ * Event callbacks (onMessage, onReaction) are set by the caller before connect().
+ */
+export interface PlatformAdapter extends PlatformState {
   connect(config: PlatformConfig): Promise<void>;
   disconnect(): Promise<void>;
-  isConnected(): boolean;
 
   onMessage: (msg: IncomingMessage) => Promise<void>;
   onReaction: (reaction: Reaction) => Promise<void>;

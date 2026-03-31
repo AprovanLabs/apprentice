@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { getAsset, findAssets } from '../assets';
 import { executeAsset } from '../assets/executor';
 import { insertEvent } from '../events';
-import type { AssetId } from '../types';
+import type { AssetId } from '../types/asset';
 
 /**
  * Find asset by ID or fuzzy key match

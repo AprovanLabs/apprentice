@@ -26,7 +26,7 @@ import {
   getEventsWithoutEmbeddings,
   batchUpsertEventEmbeddings,
 } from './search/vector';
-import type { Event } from './types';
+import type { Event } from './types/event';
 
 /**
  * Redact sensitive data from an event

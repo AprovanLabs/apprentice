@@ -1,6 +1,6 @@
 // Chat source adapter interfaces for importing chat history
 
-import type { ChatSession } from '../types';
+import type { ChatSession } from '../types/chat';
 
 /**
  * Source adapter for importing chat history from AI assistants

@@ -1,4 +1,4 @@
-import { fastComplete } from '../ai';
+import { complete, getAIConfig } from '../ai';
 
 export interface SummaryResult {
   summary: string;
@@ -26,8 +26,9 @@ Respond in JSON format:
 }`;
 
   try {
-    const response = await fastComplete({
-      messages: [{ role: 'user', content: prompt }],
+    const response = await complete({
+      model: getAIConfig().models.fast,
+      prompt,
       temperature: 0.3,
     });
 

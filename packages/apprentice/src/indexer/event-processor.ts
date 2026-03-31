@@ -3,7 +3,7 @@ import { createInterface } from 'node:readline';
 import { insertEvent } from '../events';
 import { getIndexerState, updateIndexerState } from '../db';
 import { redact } from '../redact';
-import type { Event } from '../types';
+import type { Event } from '../types/event';
 
 function redactEvent(event: Event): Event {
   const redactedMessage = redact(event.message);

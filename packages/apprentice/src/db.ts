@@ -2,7 +2,7 @@ import { createClient, type Client } from '@libsql/client';
 import { mkdirSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { paths } from './config';
-import type { Context } from './types';
+import type { Context } from './types/context';
 
 let db: Client | null = null;
 
@@ -541,9 +541,8 @@ export async function flushWal(): Promise<boolean> {
     console.log(
       `WAL flushed: ${result.walPagesWritten}/${result.walPagesTotal} pages written`,
     );
-    return true;
   }
-  return false;
+  return !!result;
 }
 
 export async function closeDb(): Promise<void> {

@@ -1,5 +1,5 @@
 import { getDb } from '../db';
-import type { Asset, AssetId } from '../types';
+import type { Asset, AssetId } from '../types/asset';
 import { createHash } from 'node:crypto';
 import { setContent } from './content';
 

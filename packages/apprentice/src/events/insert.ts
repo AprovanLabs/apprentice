@@ -1,6 +1,7 @@
 import { uuidv7 } from 'uuidv7';
 import { getDb } from '../db';
-import type { Event, Metadata } from '../types';
+import type { Event } from '../types/event';
+import type { Metadata } from '../types/metadata';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 

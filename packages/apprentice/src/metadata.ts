@@ -1,4 +1,4 @@
-import type { Metadata } from './types';
+import type { Metadata } from './types/metadata';
 
 /**
  * Flatten nested metadata object to dot-notation key-value pairs

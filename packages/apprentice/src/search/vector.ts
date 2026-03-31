@@ -1,5 +1,6 @@
 import type { Client } from '@libsql/client';
-import type { Event, Asset } from '../types';
+import type { Event } from '../types/event';
+import type { Asset } from '../types/asset';
 import type { EmbeddingProvider } from '../embeddings/types';
 import { matchesFilters } from '../filters';
 
@@ -24,25 +25,17 @@ export interface VectorAssetResult {
 }
 
 export async function hasEventEmbeddings(db: Client): Promise<boolean> {
-  try {
-    const result = await db.execute(
-      `SELECT COUNT(*) as count FROM event_embeddings LIMIT 1`,
-    );
-    return (result.rows[0]?.count as number) > 0;
-  } catch {
-    return false;
-  }
+  const result = await db.execute(
+    `SELECT COUNT(*) as count FROM event_embeddings LIMIT 1`,
+  );
+  return (result.rows[0]?.count as number) > 0;
 }
 
 export async function hasAssetEmbeddings(db: Client): Promise<boolean> {
-  try {
-    const result = await db.execute(
-      `SELECT COUNT(*) as count FROM asset_embeddings LIMIT 1`,
-    );
-    return (result.rows[0]?.count as number) > 0;
-  } catch {
-    return false;
-  }
+  const result = await db.execute(
+    `SELECT COUNT(*) as count FROM asset_embeddings LIMIT 1`,
+  );
+  return (result.rows[0]?.count as number) > 0;
 }
 
 export async function searchEventsVector(

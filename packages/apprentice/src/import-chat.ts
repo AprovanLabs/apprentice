@@ -3,13 +3,9 @@ import { dirname } from 'node:path';
 import { uuidv7 } from 'uuidv7';
 import { paths, config, loadUserConfig } from './config';
 import { getIndexerState, updateIndexerState } from './db';
-import type {
-  ChatSession,
-  ChatMessage,
-  ChatToolCall,
-  Event,
-  AssetRelation,
-} from './types';
+import type { ChatSession, ChatMessage, ChatToolCall } from './types/chat';
+import type { Event } from './types/event';
+import type { AssetRelation } from './types/asset';
 import type { ChatSourceAdapter, ChatImportState } from './importers/types';
 
 /**

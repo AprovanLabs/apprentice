@@ -42,7 +42,7 @@ export function registerProvidersCommand(program: Command): void {
         const { userCode, verificationUrl, waitForAuth } = await connect();
 
         console.log(`Open: ${verificationUrl}`);
-        console.log(`Code: ${userCode}\n`);
+        console.log(`Code: ${userCode}\n`); // nosec - userCode is a display-only device flow code shown intentionally to the user
         console.log('Waiting for authorization...');
 
         await waitForAuth();

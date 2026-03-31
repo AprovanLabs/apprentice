@@ -1,6 +1,6 @@
 import { getDb } from '../db';
 import { getEmbeddingProvider, getEmbeddingConfig } from '../embeddings';
-import type { AssetId } from '../types';
+import type { AssetId } from '../types/asset';
 
 export interface EmbeddingTask {
   assetId: AssetId;
