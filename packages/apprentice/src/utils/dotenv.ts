@@ -34,10 +34,10 @@
  * // => { FOO: 'bar', BAZ: 'qux' }
  */
 
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
 import crypto from 'crypto';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 type EnvRecord = Record<string, string>;
 type ProcessEnv = NodeJS.ProcessEnv | EnvRecord;

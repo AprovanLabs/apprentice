@@ -1,11 +1,4 @@
-import type { Client } from '@libsql/client';
-import type { EmbeddingProvider } from '../embeddings/types';
-import type {
-  SearchOptions,
-  SearchResult,
-  SearchResponse,
-  SearchMode,
-} from './types';
+import { getRelatedContext } from './context';
 import {
   searchEventsFts,
   searchAssetsFts,
@@ -20,8 +13,15 @@ import {
   type VectorEventResult,
   type VectorAssetResult,
 } from './vector';
-import { getRelatedContext } from './context';
 import { extractVersionFilters } from './version-filters';
+import type {
+  SearchOptions,
+  SearchResult,
+  SearchResponse,
+  SearchMode,
+} from './types';
+import type { EmbeddingProvider } from '../embeddings/types';
+import type { Client } from '@libsql/client';
 
 const DEFAULT_WEIGHTS = {
   fts: 0.4,

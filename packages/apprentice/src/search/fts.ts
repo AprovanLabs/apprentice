@@ -1,10 +1,10 @@
-import type { Client } from '@libsql/client';
-import type { Event } from '../types/event';
-import type { Asset } from '../types/asset';
-import type { VersionedAssetResult } from './types';
 import { matchesFilters } from '../filters';
-import type { VersionFilter } from '../versioning/types';
 import { resolveVersionFilter } from './version-filters';
+import type { VersionedAssetResult } from './types';
+import type { Asset } from '../types/asset';
+import type { Event } from '../types/event';
+import type { VersionFilter } from '../versioning/types';
+import type { Client } from '@libsql/client';
 
 export interface FtsSearchOptions {
   limit?: number;

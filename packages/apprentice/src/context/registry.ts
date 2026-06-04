@@ -1,11 +1,11 @@
-import { getDb } from '../db';
-import type { Context, ContextInput } from '../types/context';
 import { existsSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { getDb } from '../db';
 import {
   detectProvider,
   configureVersionProvider,
 } from '../versioning/registry';
+import type { Context, ContextInput } from '../types/context';
 import '../versioning';
 
 function slugify(text: string): string {

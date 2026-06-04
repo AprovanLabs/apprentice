@@ -1,6 +1,6 @@
 import sharp from 'sharp';
-import { SessionProgressFile, SessionStage } from './session.js';
-import { ProgressConfig } from './types.js';
+import { type SessionProgressFile, type SessionStage } from './session.js';
+import { type ProgressConfig } from './types.js';
 
 interface Theme {
   background: string;

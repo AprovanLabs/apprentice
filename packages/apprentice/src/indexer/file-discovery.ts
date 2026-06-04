@@ -1,5 +1,5 @@
-import { glob } from 'glob';
 import { lstat } from 'node:fs/promises';
+import { glob } from 'glob';
 import type { Context } from '../types/context';
 
 export interface DiscoveredFile {

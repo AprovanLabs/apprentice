@@ -1,23 +1,23 @@
 import {
   Client,
   GatewayIntentBits,
-  TextChannel,
-  ThreadChannel,
-  Message,
+  type TextChannel,
+  type ThreadChannel,
+  type Message,
   AttachmentBuilder,
   Events,
   ChannelType,
   Partials,
 } from 'discord.js';
 import {
-  PlatformAdapter,
-  PlatformConfig,
-  ChannelRef,
-  MessageRef,
-  MessageContent,
-  IncomingMessage,
-  Reaction,
-  DiscordConfig,
+  type PlatformAdapter,
+  type PlatformConfig,
+  type ChannelRef,
+  type MessageRef,
+  type MessageContent,
+  type IncomingMessage,
+  type Reaction,
+  type DiscordConfig,
 } from '../types.js';
 
 export class DiscordAdapter implements PlatformAdapter {

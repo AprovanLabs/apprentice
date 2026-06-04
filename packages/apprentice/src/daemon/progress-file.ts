@@ -1,12 +1,11 @@
-import { promises as fs } from 'fs';
-import { existsSync, mkdirSync } from 'fs';
+import { promises as fs , existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import {
-  SessionProgressFile,
-  SessionStage,
-  TaskProgress,
-  ProgressLogEntry,
-  SessionResult,
+  type SessionProgressFile,
+  type SessionStage,
+  type TaskProgress,
+  type ProgressLogEntry,
+  type SessionResult,
 } from './session.js';
 
 const APPRENTICE_HOME =

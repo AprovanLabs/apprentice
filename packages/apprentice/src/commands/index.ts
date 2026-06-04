@@ -1,23 +1,23 @@
 import chalk from 'chalk';
-import {
-  indexContext,
-  indexAllContexts,
-  type IndexOptions,
-} from '../indexer/index-loop';
-import { processBashLog, processChatLog } from '../indexer/event-processor';
-import { generateAssetEmbeddings } from '../indexer/embedding-generator';
 import { paths, loadUserConfig } from '../config';
 import { listContexts } from '../context';
-import {
-  getEventsWithoutEmbeddings,
-  batchUpsertEventEmbeddings,
-} from '../search/vector';
+import { getDb } from '../db';
 import {
   getEmbeddingProvider,
   getEmbeddingConfig,
   loadEmbeddingConfig,
 } from '../embeddings';
-import { getDb } from '../db';
+import { generateAssetEmbeddings } from '../indexer/embedding-generator';
+import { processBashLog, processChatLog } from '../indexer/event-processor';
+import {
+  indexContext,
+  indexAllContexts,
+  type IndexOptions,
+} from '../indexer/index-loop';
+import {
+  getEventsWithoutEmbeddings,
+  batchUpsertEventEmbeddings,
+} from '../search/vector';
 
 interface IndexCommandOptions {
   context?: string;

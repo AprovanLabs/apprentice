@@ -1,7 +1,7 @@
 // Adapter registry - exports all available chat source adapters
 
-import type { ChatSourceAdapter } from './types';
 import { CopilotAdapter } from './copilot';
+import type { ChatSourceAdapter } from './types';
 
 // Registry of all available adapters
 export const adapters: ChatSourceAdapter[] = [new CopilotAdapter()];

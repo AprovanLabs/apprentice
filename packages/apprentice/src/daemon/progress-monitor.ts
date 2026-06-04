@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { readProgressFile } from './progress-file.js';
-import { SessionProgressFile } from './session.js';
-import { ProgressConfig } from './types.js';
+import { type SessionProgressFile } from './session.js';
+import { type ProgressConfig } from './types.js';
 
 export interface ProgressMonitorEvents {
   update: (sessionId: string, progress: SessionProgressFile) => void;

@@ -1,10 +1,10 @@
-import type { AIProviderConfig } from '../ai/types';
 import {
   createFetch as createCopilotFetch,
   getOAuthToken,
   isConfigured as isCopilotConfigured,
   COPILOT_API_BASE,
 } from '@aprovan/copilot-proxy';
+import type { AIProviderConfig } from '../ai/types';
 
 export interface OpenAICompatibleTransport {
   baseURL: string;

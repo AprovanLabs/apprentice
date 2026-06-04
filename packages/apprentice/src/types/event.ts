@@ -1,5 +1,5 @@
-import type { Metadata } from './metadata';
 import type { AssetRelation } from './asset';
+import type { Metadata } from './metadata';
 
 // ============================================================================
 // Event Types

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
-import { ChannelRef } from './types.js';
-import { Session, SessionRequest } from './session.js';
+import { type Session, type SessionRequest } from './session.js';
+import { type ChannelRef } from './types.js';
 
 export class SessionManager {
   private sessions: Map<string, Session> = new Map();

@@ -1,11 +1,11 @@
 // Embedding cache for avoiding recomputation
 
-import type { Client } from '@libsql/client';
 import {
   hashContent,
   serializeEmbedding,
   deserializeEmbedding,
 } from './client';
+import type { Client } from '@libsql/client';
 
 /**
  * Initialize embedding cache table

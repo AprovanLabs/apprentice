@@ -1,10 +1,10 @@
 import chalk from 'chalk';
-import { getDb } from '../db';
 import { loadUserConfig } from '../config';
+import { getDb } from '../db';
 import { getEmbeddingProvider } from '../embeddings';
 import { search, type SearchMode, type SearchResponse } from '../search';
-import type { Event } from '../types/event';
 import type { Asset } from '../types/asset';
+import type { Event } from '../types/event';
 import type { Metadata } from '../types/metadata';
 
 interface SearchOptions {

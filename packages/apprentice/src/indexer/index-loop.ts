@@ -1,14 +1,15 @@
-import { listContexts } from '../context';
-import { getDb } from '../db';
-import { upsertAsset } from '../assets/upsert';
-import { discoverFiles } from './file-discovery';
-import { computeContentHash } from './content-hash';
-import { extractMetadata, registerMetadataHandler } from './metadata-handlers';
-import { shellScriptHandler } from './handlers/shell-script';
-import { markdownHandler } from './handlers/markdown';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
+import { upsertAsset } from '../assets/upsert';
+import { listContexts } from '../context';
+import { getDb } from '../db';
 import { syncVersions, runContentEviction } from '../versioning';
+import { computeContentHash } from './content-hash';
+import { discoverFiles } from './file-discovery';
+import { markdownHandler } from './handlers/markdown';
+import { shellScriptHandler } from './handlers/shell-script';
+import { extractMetadata, registerMetadataHandler } from './metadata-handlers';
 
 registerMetadataHandler(shellScriptHandler);
 registerMetadataHandler(markdownHandler);
@@ -31,8 +32,6 @@ export interface IndexOptions {
   noVersions?: boolean;
   versionDepth?: number;
 }
-
-import { createHash } from 'node:crypto';
 
 function generateAssetId(context_id: string, key: string): string {
   return createHash('sha256')

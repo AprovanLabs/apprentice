@@ -1,6 +1,6 @@
 // CLI command for importing chat history from AI assistants
 
-import { Command } from 'commander';
+import { type Command } from 'commander';
 import {
   importFromAdapter,
   runChatImport,

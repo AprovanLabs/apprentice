@@ -1,15 +1,15 @@
-import { indexAllContexts } from './indexer/index-loop';
-import { processBashLog, processChatLog } from './indexer/event-processor';
-import { generateAssetEmbeddings } from './indexer/embedding-generator';
 import { paths, config, loadUserConfig } from './config';
 import { getDb, closeDb, checkpoint } from './db';
-import { runChatImport } from './import-chat';
-import { adapters } from './importers';
 import {
   loadEmbeddingConfig,
   getEmbeddingProvider,
   getEmbeddingConfig,
 } from './embeddings';
+import { runChatImport } from './import-chat';
+import { adapters } from './importers';
+import { generateAssetEmbeddings } from './indexer/embedding-generator';
+import { processBashLog, processChatLog } from './indexer/event-processor';
+import { indexAllContexts } from './indexer/index-loop';
 import {
   getEventsWithoutEmbeddings,
   batchUpsertEventEmbeddings,
