@@ -3,11 +3,9 @@
 // Also handles auto-import of chat history from AI assistants
 
 import { createReadStream, existsSync, readdirSync, statSync } from 'node:fs';
-import { createInterface } from 'node:readline';
 import { join, extname, basename } from 'node:path';
-
+import { createInterface } from 'node:readline';
 import { paths, config, loadUserConfig } from './config';
-import { redact } from './redact';
 import {
   insertEvent,
   getDb,
@@ -15,13 +13,14 @@ import {
   getIndexerState,
   updateIndexerState,
 } from './db';
-import { runChatImport } from './import-chat';
-import { adapters } from './importers';
 import {
   loadEmbeddingConfig,
   getEmbeddingProvider,
   type EmbeddingProvider,
 } from './embeddings';
+import { runChatImport } from './import-chat';
+import { adapters } from './importers';
+import { redact } from './redact';
 import {
   getEventsWithoutEmbeddings,
   batchUpsertEventEmbeddings,

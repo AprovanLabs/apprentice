@@ -1,5 +1,5 @@
-import type { MetadataHandler } from '../metadata-handlers';
 import { parse as parseYaml } from 'yaml';
+import type { MetadataHandler } from '../metadata-handlers';
 
 function extractFrontmatter(content: string): Record<string, unknown> | null {
   const lines = content.split('\n');

@@ -1,4 +1,4 @@
-import { ChannelRef, MessageRef } from './types.js';
+import { type ChannelRef, type MessageRef } from './types.js';
 
 export interface Session {
   id: string;

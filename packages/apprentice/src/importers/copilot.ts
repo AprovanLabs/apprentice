@@ -1,6 +1,8 @@
 // VS Code GitHub Copilot Chat adapter
 
-import type { ChatSourceAdapter } from './types';
+import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { config } from '../config';
 import type {
   ChatSession,
   ChatMessage,
@@ -8,9 +10,7 @@ import type {
   ChatContextRef,
   ToolConfirmation,
 } from '../types';
-import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
-import { config } from '../config';
+import type { ChatSourceAdapter } from './types';
 
 /**
  * Copilot chat session file structure (from investigation)

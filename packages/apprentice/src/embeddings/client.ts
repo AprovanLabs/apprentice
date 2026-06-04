@@ -1,7 +1,6 @@
 // Embedding client - follows AI module client patterns
 
 import { createHash } from 'node:crypto';
-import type { EmbeddingProvider, EmbeddingModelId } from './types';
 import {
   parseEmbeddingModelId,
   getEmbeddingProviderConfig,
@@ -9,6 +8,7 @@ import {
   isEmbeddingProviderConfigured,
   getEmbeddingProviderHint,
 } from './config';
+import type { EmbeddingProvider, EmbeddingModelId } from './types';
 
 /**
  * OpenAI-compatible embedding response

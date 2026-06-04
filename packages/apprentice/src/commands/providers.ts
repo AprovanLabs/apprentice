@@ -1,6 +1,5 @@
 // Providers command - manage AI provider connections
 
-import { Command } from 'commander';
 import {
   connect,
   disconnect,
@@ -8,6 +7,7 @@ import {
   isConfigured,
   CopilotClient,
 } from '@aprovan/copilot-proxy';
+import { type Command } from 'commander';
 
 /**
  * Register the providers command with subcommands

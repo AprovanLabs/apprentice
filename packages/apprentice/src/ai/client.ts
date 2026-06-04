@@ -1,12 +1,12 @@
 // AI completion client
 
-import { getAIConfig, parseModelId, getProviderConfig } from './config';
-import type { CompletionOptions, CompletionResult } from './types';
 import {
   getOpenAICompatibleTransport,
   getProviderConfigHint,
   isProviderConfigured,
 } from '../providers/llm-transport';
+import { getAIConfig, parseModelId, getProviderConfig } from './config';
+import type { CompletionOptions, CompletionResult } from './types';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';

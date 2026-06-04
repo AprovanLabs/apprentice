@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, appendFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { uuidv7 } from 'uuidv7';
 
 /**

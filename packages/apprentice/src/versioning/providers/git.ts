@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
+import { promisify } from 'node:util';
 import type {
   VersionProvider,
   VersionProviderConfig,

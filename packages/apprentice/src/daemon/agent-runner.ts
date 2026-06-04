@@ -1,10 +1,10 @@
-import { spawn, ChildProcess, exec } from 'child_process';
-import { promisify } from 'util';
+import { spawn, type ChildProcess, exec } from 'child_process';
 import { EventEmitter } from 'events';
 import { writeFileSync } from 'fs';
 import { join, dirname } from 'path';
-import { AgentConfig, ProgressConfig } from './types.js';
+import { promisify } from 'util';
 import { ProgressFileWriter, getProgressFilePath } from './progress-file.js';
+import { type AgentConfig, type ProgressConfig } from './types.js';
 
 const execAsync = promisify(exec);
 

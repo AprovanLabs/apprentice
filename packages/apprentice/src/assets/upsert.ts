@@ -1,7 +1,7 @@
-import { getDb } from '../db';
-import type { Asset, AssetId } from '../types/asset';
 import { createHash } from 'node:crypto';
+import { getDb } from '../db';
 import { setContent } from './content';
+import type { Asset, AssetId } from '../types/asset';
 
 function generateAssetId(context_id: string, key: string): AssetId {
   return createHash('sha256')

@@ -1,8 +1,8 @@
-import type { Client } from '@libsql/client';
-import type { Event } from '../types/event';
-import type { Asset } from '../types/asset';
-import type { EmbeddingProvider } from '../embeddings/types';
 import { matchesFilters } from '../filters';
+import type { EmbeddingProvider } from '../embeddings/types';
+import type { Asset } from '../types/asset';
+import type { Event } from '../types/event';
+import type { Client } from '@libsql/client';
 
 export interface VectorSearchOptions {
   limit?: number;

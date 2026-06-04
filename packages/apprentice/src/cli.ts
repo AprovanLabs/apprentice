@@ -1,14 +1,17 @@
 // Apprentice CLI
 
+import { spawn } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
+import { join } from 'node:path';
 import { program } from 'commander';
-import { searchCommand } from './commands/search';
 import { completionsCommand } from './commands/completions';
-import { registerImportCommand } from './commands/import';
-import { registerProvidersCommand } from './commands/providers';
-import { indexCommand } from './commands/index';
-import { daemonCommand } from './commands/daemon';
 import { registerContextCommand } from './commands/context';
+import { daemonCommand } from './commands/daemon';
+import { registerImportCommand } from './commands/import';
+import { indexCommand } from './commands/index';
+import { registerProvidersCommand } from './commands/providers';
 import { runCommand } from './commands/run';
+import { searchCommand } from './commands/search';
 
 program
   .name('apr')
@@ -171,10 +174,6 @@ program
   .action(() => daemonCommand());
 
 // === INDEXER DAEMON ===
-
-import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
-import { join } from 'node:path';
 
 const indexerCommand = program
   .command('indexer')

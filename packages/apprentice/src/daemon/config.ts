@@ -1,5 +1,5 @@
 import { loadUserConfig } from '../config.js';
-import { DaemonConfig } from './types.js';
+import { type DaemonConfig } from './types.js';
 
 const DEFAULT_CONFIG: DaemonConfig = {
   agent: {

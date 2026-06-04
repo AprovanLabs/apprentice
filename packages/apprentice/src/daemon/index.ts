@@ -1,12 +1,12 @@
-import { DaemonConfig, PlatformAdapter, IncomingMessage } from './types.js';
-import { SessionManager } from './session-manager.js';
-import { ProgressRenderer } from './progress-renderer.js';
-import { AgentRunner, AgentQuestion } from './agent-runner.js';
-import { ProgressFileMonitor } from './progress-monitor.js';
-import { deleteProgressFile, readProgressFile } from './progress-file.js';
-import { loadConfig } from './config.js';
-import { Session, SessionProgressFile } from './session.js';
 import { isAIAvailable, fastComplete } from '../ai/index.js';
+import { AgentRunner, type AgentQuestion } from './agent-runner.js';
+import { loadConfig } from './config.js';
+import { deleteProgressFile, readProgressFile } from './progress-file.js';
+import { ProgressFileMonitor } from './progress-monitor.js';
+import { ProgressRenderer } from './progress-renderer.js';
+import { SessionManager } from './session-manager.js';
+import { type Session, type SessionProgressFile } from './session.js';
+import { type DaemonConfig, type PlatformAdapter, type IncomingMessage } from './types.js';
 
 export class AgentDaemon {
   private adapters: Map<string, PlatformAdapter> = new Map();

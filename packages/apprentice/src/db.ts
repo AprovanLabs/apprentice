@@ -1,6 +1,6 @@
-import { createClient, type Client } from '@libsql/client';
 import { mkdirSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { createClient, type Client } from '@libsql/client';
 import { paths } from './config';
 import type { Context } from './types/context';
 
