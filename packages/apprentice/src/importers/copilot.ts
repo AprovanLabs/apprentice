@@ -3,14 +3,14 @@
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { config } from '../config';
+import type { ChatSourceAdapter } from './types';
 import type {
   ChatSession,
   ChatMessage,
   ChatToolCall,
   ChatContextRef,
   ToolConfirmation,
-} from '../types';
-import type { ChatSourceAdapter } from './types';
+} from '../types/chat';
 
 /**
  * Copilot chat session file structure (from investigation)

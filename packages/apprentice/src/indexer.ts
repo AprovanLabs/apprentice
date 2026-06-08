@@ -13,11 +13,8 @@ import {
   getIndexerState,
   updateIndexerState,
 } from './db';
-import {
-  loadEmbeddingConfig,
-  getEmbeddingProvider,
-  type EmbeddingProvider,
-} from './embeddings';
+import { getEmbeddingProvider } from './embeddings/client';
+import { loadEmbeddingConfig } from './embeddings/config';
 import { runChatImport } from './import-chat';
 import { adapters } from './importers';
 import { redact } from './redact';
@@ -25,6 +22,7 @@ import {
   getEventsWithoutEmbeddings,
   batchUpsertEventEmbeddings,
 } from './search/vector';
+import type { EmbeddingProvider } from './embeddings/types';
 import type { Event } from './types/event';
 
 /**
