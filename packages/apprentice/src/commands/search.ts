@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { loadUserConfig } from '../config';
 import { getDb } from '../db';
-import { getEmbeddingProvider } from '../embeddings';
+import { getEmbeddingProvider } from '../embeddings/client';
 import { search, type SearchMode, type SearchResponse } from '../search';
 import type { Asset } from '../types/asset';
 import type { Event } from '../types/event';

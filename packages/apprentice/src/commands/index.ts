@@ -4,9 +4,11 @@ import { listContexts } from '../context';
 import { getDb } from '../db';
 import {
   getEmbeddingProvider,
+} from '../embeddings/client';
+import {
   getEmbeddingConfig,
   loadEmbeddingConfig,
-} from '../embeddings';
+} from '../embeddings/config';
 import { generateAssetEmbeddings } from '../indexer/embedding-generator';
 import { processBashLog, processChatLog } from '../indexer/event-processor';
 import {

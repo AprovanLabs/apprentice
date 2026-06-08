@@ -1,4 +1,5 @@
-import { complete, getAIConfig } from '../ai';
+import { complete } from '../ai/client';
+import { getAIConfig } from '../ai/config';
 
 export interface SummaryResult {
   summary: string;

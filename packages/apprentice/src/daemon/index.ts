@@ -1,4 +1,5 @@
-import { isAIAvailable, fastComplete } from '../ai/index.js';
+import { fastComplete } from '../ai/client';
+import { isAIAvailable } from '../ai/config';
 import { AgentRunner, type AgentQuestion } from './agent-runner.js';
 import { loadConfig } from './config.js';
 import { deleteProgressFile, readProgressFile } from './progress-file.js';

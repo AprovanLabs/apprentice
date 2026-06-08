@@ -1,10 +1,7 @@
 import { paths, config, loadUserConfig } from './config';
 import { getDb, closeDb, checkpoint } from './db';
-import {
-  loadEmbeddingConfig,
-  getEmbeddingProvider,
-  getEmbeddingConfig,
-} from './embeddings';
+import { getEmbeddingProvider } from './embeddings/client';
+import { loadEmbeddingConfig, getEmbeddingConfig } from './embeddings/config';
 import { runChatImport } from './import-chat';
 import { adapters } from './importers';
 import { generateAssetEmbeddings } from './indexer/embedding-generator';
