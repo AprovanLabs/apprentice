@@ -5,6 +5,15 @@ import { getContentByHash } from './content';
 import type { Asset, AssetId } from '../types/asset';
 import type { Context } from '../types/context';
 
+function safeJsonParse<T>(json: string | null, fallback: T): T {
+  if (!json) return fallback;
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 export interface FindAssetsOptions {
   context_id?: string;
   context_ids?: string[];
@@ -47,7 +56,7 @@ export async function getAsset(
     extension: row.extension as string,
     content_hash: row.content_hash as string,
     indexed_at: row.indexed_at as string,
-    metadata: JSON.parse(row.metadata as string),
+    metadata: safeJsonParse(row.metadata as string, {}),
     content,
   };
 }
@@ -112,7 +121,7 @@ export async function findAssets(
     extension: row.extension as string,
     content_hash: row.content_hash as string,
     indexed_at: row.indexed_at as string,
-    metadata: JSON.parse(row.metadata as string),
+    metadata: safeJsonParse(row.metadata as string, {}),
   }));
 }
 

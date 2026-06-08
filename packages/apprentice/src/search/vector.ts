@@ -4,6 +4,15 @@ import type { Asset } from '../types/asset';
 import type { Event } from '../types/event';
 import type { Client } from '@libsql/client';
 
+function safeJsonParse<T>(json: string | null, fallback: T): T {
+  if (!json) return fallback;
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 export interface VectorSearchOptions {
   limit?: number;
   since?: string;
@@ -97,7 +106,7 @@ export async function searchEventsVector(
       id: row.id as string,
       timestamp: row.timestamp as string,
       message: row.message as string,
-      metadata: JSON.parse(row.metadata as string) as Record<string, unknown>,
+      metadata: safeJsonParse(row.metadata as string, {}) as Record<string, unknown>,
     },
     distance: row.distance as number,
   }));
@@ -179,7 +188,7 @@ export async function searchAssetsVector(
       extension: row.extension as string,
       content_hash: row.content_hash as string,
       indexed_at: row.indexed_at as string,
-      metadata: JSON.parse(row.metadata as string),
+      metadata: safeJsonParse(row.metadata as string, {}),
     },
     distance: row.distance as number,
   }));
@@ -256,7 +265,7 @@ export async function getEventsWithoutEmbeddings(
     id: row.id as string,
     timestamp: row.timestamp as string,
     message: row.message as string,
-    metadata: JSON.parse(row.metadata as string) as Record<string, unknown>,
+    metadata: safeJsonParse(row.metadata as string, {}) as Record<string, unknown>,
   }));
 }
 

@@ -10,6 +10,15 @@ type ProviderFactory = (config: VersionProviderConfig) => VersionProvider;
 const providerFactories = new Map<ProviderType, ProviderFactory>();
 const providerInstances = new Map<string, VersionProvider>();
 
+function safeJsonParse<T>(json: string | null, fallback: T): T {
+  if (!json) return fallback;
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 export function registerProvider(
   type: ProviderType,
   factory: ProviderFactory,
@@ -36,7 +45,7 @@ export async function getProviderForContext(
   if (!(row.enabled as number)) return null;
 
   const providerType = row.provider_type as ProviderType;
-  const config = JSON.parse(row.config as string) as VersionProviderConfig;
+  const config = safeJsonParse(row.config as string, {}) as VersionProviderConfig;
 
   const factory = providerFactories.get(providerType);
   if (!factory) return null;

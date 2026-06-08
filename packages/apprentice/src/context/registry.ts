@@ -8,6 +8,15 @@ import {
 import type { Context, ContextInput } from '../types/context';
 import '../versioning';
 
+function safeJsonParse<T>(json: string | null, fallback: T): T {
+  if (!json) return fallback;
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -124,10 +133,10 @@ export async function listContexts(): Promise<ContextWithCounts[]> {
     id: row.id as string,
     name: row.name as string,
     path: row.path as string,
-    mounts: JSON.parse((row.extra_paths as string) || '[]'),
+    mounts: safeJsonParse((row.extra_paths as string) || null, []),
     enabled: Boolean(row.enabled),
-    include_patterns: JSON.parse(row.include_patterns as string),
-    exclude_patterns: JSON.parse(row.exclude_patterns as string),
+    include_patterns: safeJsonParse(row.include_patterns as string, []),
+    exclude_patterns: safeJsonParse(row.exclude_patterns as string, []),
     registered_at: row.registered_at as string,
     last_indexed_at: (row.last_indexed_at as string) || undefined,
     version_provider_type: (row.version_provider_type as string) || undefined,
@@ -151,10 +160,10 @@ export async function getContext(id: string): Promise<Context | null> {
     id: row.id as string,
     name: row.name as string,
     path: row.path as string,
-    mounts: JSON.parse((row.extra_paths as string) || '[]'),
+    mounts: safeJsonParse((row.extra_paths as string) || null, []),
     enabled: Boolean(row.enabled),
-    include_patterns: JSON.parse(row.include_patterns as string),
-    exclude_patterns: JSON.parse(row.exclude_patterns as string),
+    include_patterns: safeJsonParse(row.include_patterns as string, []),
+    exclude_patterns: safeJsonParse(row.exclude_patterns as string, []),
     registered_at: row.registered_at as string,
     last_indexed_at: (row.last_indexed_at as string) || undefined,
     version_provider_type: (row.version_provider_type as string) || undefined,

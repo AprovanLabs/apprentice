@@ -33,7 +33,12 @@ async function getAssetsWithoutEmbeddings(
   for (const row of result.rows) {
     const assetId = row.id as AssetId;
     const content = row.content as string | null;
-    const metadata = JSON.parse(row.metadata as string);
+    let metadata: any;
+    try {
+      metadata = JSON.parse(row.metadata as string);
+    } catch {
+      metadata = {};
+    }
 
     let text = '';
 
