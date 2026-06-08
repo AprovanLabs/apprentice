@@ -190,5 +190,9 @@ export function parseJSONResponse<T>(text: string): T {
     cleaned = cleaned.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
   }
 
-  return JSON.parse(cleaned) as T;
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch (error) {
+    throw new Error(`Failed to parse JSON from AI response: ${(error as Error).message}`);
+  }
 }

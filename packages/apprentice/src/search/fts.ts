@@ -6,6 +6,15 @@ import type { Event } from '../types/event';
 import type { VersionFilter } from '../versioning/types';
 import type { Client } from '@libsql/client';
 
+function safeJsonParse<T>(json: string | null, fallback: T): T {
+  if (!json) return fallback;
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 export interface FtsSearchOptions {
   limit?: number;
   since?: string;
@@ -107,7 +116,7 @@ export async function searchEventsFts(
       id: row.id as string,
       timestamp: row.timestamp as string,
       message: row.message as string,
-      metadata: JSON.parse(row.metadata as string) as Record<string, unknown>,
+      metadata: safeJsonParse(row.metadata as string, {}) as Record<string, unknown>,
     },
     score: -(row.score as number),
   }));
@@ -217,7 +226,7 @@ export async function searchAssetsFts(
       extension: row.extension as string,
       content_hash: row.content_hash as string,
       indexed_at: row.indexed_at as string,
-      metadata: JSON.parse(row.metadata as string),
+      metadata: safeJsonParse(row.metadata as string, {}),
     },
     score: -(row.score as number),
   }));
@@ -330,7 +339,7 @@ async function searchVersionedAssetsFts(
       content_hash: row.content_hash as string,
       indexed_at:
         (row.indexed_at as string) || (row.version_timestamp as string),
-      metadata: row.metadata ? JSON.parse(row.metadata as string) : {},
+      metadata: row.metadata ? safeJsonParse(row.metadata as string, {}) : {},
       version_ref: row.version_ref as string | undefined,
       version_name: row.version_name as string | undefined,
       version_timestamp: row.version_timestamp as string | undefined,

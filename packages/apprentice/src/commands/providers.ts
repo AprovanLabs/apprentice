@@ -42,6 +42,9 @@ export function registerProvidersCommand(program: Command): void {
         const { userCode, verificationUrl, waitForAuth } = await connect();
 
         console.log(`Open: ${verificationUrl}`);
+        // userCode is a one-time device flow code that MUST be shown to the user
+        // so they can enter it at the verification URL. This is required by the
+        // OAuth 2.0 Device Authorization Grant (RFC 8628) and is not a secret.
         console.log(`Code: ${userCode}\n`); // nosec - userCode is a display-only device flow code shown intentionally to the user
         console.log('Waiting for authorization...');
 

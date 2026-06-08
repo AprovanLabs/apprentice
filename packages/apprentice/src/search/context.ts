@@ -3,6 +3,15 @@ import type { Asset } from '../types/asset';
 import type { Event } from '../types/event';
 import type { Client } from '@libsql/client';
 
+function safeJsonParse<T>(json: string | null, fallback: T): T {
+  if (!json) return fallback;
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 const DEFAULT_WINDOW_SECONDS = 60;
 const DEFAULT_LIMIT = 20;
 
@@ -81,7 +90,7 @@ async function getGroupedEvents(
     id: String(row.id),
     timestamp: String(row.timestamp),
     message: String(row.message),
-    metadata: JSON.parse(String(row.metadata)),
+    metadata: safeJsonParse(String(row.metadata), {}),
   }));
 }
 
@@ -118,7 +127,7 @@ async function getTemporalEvents(
     id: String(row.id),
     timestamp: String(row.timestamp),
     message: String(row.message),
-    metadata: JSON.parse(String(row.metadata)),
+    metadata: safeJsonParse(String(row.metadata), {}),
   }));
 }
 
@@ -177,7 +186,7 @@ async function getRelatedAssets(db: Client, events: Event[]): Promise<Asset[]> {
     extension: String(row.extension),
     content_hash: String(row.content_hash),
     indexed_at: String(row.indexed_at),
-    metadata: JSON.parse(String(row.metadata)),
+    metadata: safeJsonParse(String(row.metadata), {}),
   }));
 }
 
