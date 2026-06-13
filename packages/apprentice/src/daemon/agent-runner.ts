@@ -3,10 +3,14 @@ import { EventEmitter } from 'events';
 import { writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { promisify } from 'util';
+import { createLogger } from '../utils/logger.js';
 import { ProgressFileWriter, getProgressFilePath } from './progress-file.js';
 import { type AgentConfig, type ProgressConfig } from './types.js';
 
 const execAsync = promisify(exec);
+
+const log = createLogger({ namespace: 'AgentRunner' });
+const agentLog = createLogger({ namespace: 'Agent' });
 
 export interface AgentProcess extends EventEmitter {
   readonly id: string;
@@ -73,7 +77,7 @@ export class AgentRunner {
 
     // Start asynchronously but catch any errors
     process.start().catch((err) => {
-      console.error(`[AgentRunner] Failed to start process:`, err);
+      log.error('Failed to start process', { error: err });
     });
     return process;
   }
@@ -150,46 +154,42 @@ class AgentProcessImpl extends EventEmitter implements AgentProcess {
 
       this.process = this.spawnAgent();
 
-      console.log(
-        `[AgentRunner] Process spawned with PID: ${this.process.pid}`,
-      );
+      log.info('Process spawned', { pid: this.process.pid });
       await this.progressWriter.addLogEntry(
         `Process spawned (PID: ${this.process.pid})`,
       );
 
       // Debug lifecycle events
       this.process.on('spawn', () => {
-        console.log(`[AgentRunner] Process spawn event fired`);
+        log.debug('Process spawn event fired');
       });
       this.process.on('disconnect', () => {
-        console.log(`[AgentRunner] Process disconnected`);
+        log.debug('Process disconnected');
       });
       this.process.on('exit', (code, signal) => {
-        console.log(
-          `[AgentRunner] Process exit: code=${code}, signal=${signal}`,
-        );
+        log.debug('Process exit', { code, signal });
       });
 
       this.process.stdout?.on('data', (data) => {
         const text = data.toString();
-        console.log(`[Agent] stdout: ${text.trim()}`);
+        agentLog.debug('stdout', { data: text.trim() });
         this.handleOutput(text);
       });
       this.process.stdout?.on('end', () => {
-        console.log(`[AgentRunner] stdout stream ended`);
+        log.debug('stdout stream ended');
       });
       this.process.stderr?.on('data', (data) => {
         const text = data.toString();
-        console.log(`[Agent] stderr: ${text.trim()}`);
+        agentLog.debug('stderr', { data: text.trim() });
         this.handleOutput(text);
       });
 
       this.process.on('close', (code) => {
-        console.log(`[AgentRunner] Process closed with code: ${code}`);
+        log.info('Process closed', { code });
         this.handleClose(code);
       });
       this.process.on('error', (err) => {
-        console.error(`[AgentRunner] Process error:`, err);
+        log.error('Process error', { error: err });
         this.handleError(err);
       });
 
@@ -220,7 +220,7 @@ class AgentProcessImpl extends EventEmitter implements AgentProcess {
     );
     const promptContent = this.buildProgressInstructions(progressFilePath);
     writeFileSync(promptFilePath, promptContent);
-    console.log(`[AgentRunner] Wrote prompt file: ${promptFilePath}`);
+    log.info('Wrote prompt file', { path: promptFilePath });
 
     // Reference the prompt file at the start, then the task
     const fullTask = `First, read ${promptFilePath} for important instructions.\n\n${this.options.task}`;
@@ -231,9 +231,9 @@ class AgentProcessImpl extends EventEmitter implements AgentProcess {
     const workspaceArg = workspace ? `--workspace '${workspace}'` : '';
     const command = `cursor agent -p --approve-mcps --output-format stream-json ${workspaceArg} '${escapedTask}'`;
 
-    console.log(`[AgentRunner] Spawning command: ${command.slice(0, 200)}...`);
-    console.log(`[AgentRunner] Working directory: ${workspace}`);
-    console.log(`[AgentRunner] Progress file: ${progressFilePath}`);
+    log.info('Spawning command', { command: command.slice(0, 200) });
+    log.info('Working directory', { cwd: workspace });
+    log.info('Progress file', { path: progressFilePath });
 
     // Use stdio: "inherit" so output goes directly to terminal for debugging
     // Progress updates come from the file monitor, not stdout parsing
@@ -312,7 +312,7 @@ Rules:
         cwd: this.options.workingDirectory || process.cwd(),
       });
     } catch (error) {
-      console.error(`Failed to remove worktree: ${error}`);
+      log.error('Failed to remove worktree', { error });
     }
   }
 
@@ -335,7 +335,7 @@ Rules:
       try {
         const event = JSON.parse(line);
         // Log full event for debugging
-        console.log(`[Agent] JSON event:`, JSON.stringify(event, null, 2));
+        agentLog.debug('JSON event', { event });
         this.handleEvent(event);
         return;
       } catch {
@@ -348,9 +348,7 @@ Rules:
   }
 
   private handleEvent(event: any): void {
-    console.log(
-      `[Agent] Event type: ${event.type}, subtype: ${event.subtype || 'none'}`,
-    );
+    agentLog.debug('Event', { type: event.type, subtype: event.subtype || 'none' });
 
     // Only handle result events - the spawned agent handles progress updates
     if (event.type === 'result') {

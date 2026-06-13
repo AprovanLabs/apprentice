@@ -1,7 +1,10 @@
 import { EventEmitter } from 'events';
+import { createLogger } from '../utils/logger.js';
 import { readProgressFile } from './progress-file.js';
 import { type SessionProgressFile } from './session.js';
 import { type ProgressConfig } from './types.js';
+
+const log = createLogger({ namespace: 'ProgressMonitor' });
 
 export interface ProgressMonitorEvents {
   update: (sessionId: string, progress: SessionProgressFile) => void;
@@ -32,7 +35,7 @@ export class ProgressFileMonitor extends EventEmitter {
       return;
     }
 
-    console.log(`[ProgressMonitor] Starting to monitor session: ${sessionId}`);
+    log.info('Starting to monitor session', { sessionId });
 
     const interval = setInterval(async () => {
       await this.checkProgress(sessionId);
@@ -55,7 +58,7 @@ export class ProgressFileMonitor extends EventEmitter {
     if (session) {
       clearInterval(session.interval);
       this.monitoredSessions.delete(sessionId);
-      console.log(`[ProgressMonitor] Stopped monitoring session: ${sessionId}`);
+      log.info('Stopped monitoring session', { sessionId });
     }
   }
 
@@ -93,10 +96,7 @@ export class ProgressFileMonitor extends EventEmitter {
         }
       }
     } catch (error) {
-      console.error(
-        `[ProgressMonitor] Error reading progress for ${sessionId}:`,
-        error,
-      );
+      log.error('Error reading progress', { sessionId, error });
       this.emit('error', sessionId, error as Error);
     }
   }

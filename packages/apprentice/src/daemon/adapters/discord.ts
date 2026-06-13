@@ -9,6 +9,7 @@ import {
   ChannelType,
   Partials,
 } from 'discord.js';
+import { createLogger } from '../../utils/logger.js';
 import {
   type PlatformAdapter,
   type PlatformConfig,
@@ -19,6 +20,8 @@ import {
   type Reaction,
   type DiscordConfig,
 } from '../types.js';
+
+const log = createLogger({ namespace: 'Discord' });
 
 export class DiscordAdapter implements PlatformAdapter {
   public readonly platform = 'discord' as const;
@@ -51,7 +54,7 @@ export class DiscordAdapter implements PlatformAdapter {
     return new Promise((resolve, reject) => {
       this.client.once(Events.ClientReady, () => {
         this.ready = true;
-        console.log(`Discord connected as ${this.client.user?.tag}`);
+        log.info('Connected', { tag: this.client.user?.tag });
         resolve();
       });
 
@@ -102,7 +105,7 @@ export class DiscordAdapter implements PlatformAdapter {
       try {
         await this.onMessage(incomingMsg);
       } catch (error) {
-        console.error('Error handling Discord message:', error);
+        log.error('Error handling message', { error });
       }
     });
 
@@ -126,7 +129,7 @@ export class DiscordAdapter implements PlatformAdapter {
           added: true,
         });
       } catch (error) {
-        console.error('Error handling Discord reaction:', error);
+        log.error('Error handling reaction', { error });
       }
     });
 
@@ -146,7 +149,7 @@ export class DiscordAdapter implements PlatformAdapter {
           added: false,
         });
       } catch (error) {
-        console.error('Error handling Discord reaction remove:', error);
+        log.error('Error handling reaction remove', { error });
       }
     });
   }
@@ -259,13 +262,11 @@ export class DiscordAdapter implements PlatformAdapter {
     messageRef: MessageRef,
     content: MessageContent,
   ): Promise<void> {
-    console.log(
-      `[Discord] Editing message ${messageRef.messageId} in channel ${messageRef.channelId}`,
-    );
+    log.debug('Editing message', { messageId: messageRef.messageId, channelId: messageRef.channelId });
     const channel = await this.resolveChannel(messageRef);
-    console.log(`[Discord] Resolved channel, fetching message...`);
+    log.debug('Resolved channel, fetching message');
     const message = await channel.messages.fetch(messageRef.messageId);
-    console.log(`[Discord] Message fetched successfully`);
+    log.debug('Message fetched successfully');
 
     const editOptions: any = {};
 
@@ -274,7 +275,7 @@ export class DiscordAdapter implements PlatformAdapter {
     }
 
     if (content.image) {
-      console.log(`[Discord] Attaching image (${content.image.length} bytes)`);
+      log.debug('Attaching image', { size: content.image.length });
       const attachment = new AttachmentBuilder(content.image, {
         name: 'progress.png',
       });
@@ -299,9 +300,9 @@ export class DiscordAdapter implements PlatformAdapter {
       ];
     }
 
-    console.log(`[Discord] Applying message edit...`);
+    log.debug('Applying message edit');
     await message.edit(editOptions);
-    console.log(`[Discord] Message edit complete`);
+    log.debug('Message edit complete');
   }
 
   public async deleteMessage(messageRef: MessageRef): Promise<void> {
