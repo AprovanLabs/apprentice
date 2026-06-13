@@ -2,24 +2,8 @@ import { createReadStream, existsSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { getIndexerState, updateIndexerState } from '../db';
 import { insertEvent } from '../events';
-import { redact } from '../redact';
+import { redactEvent } from './redact';
 import type { Event } from '../types/event';
-
-function redactEvent(event: Event): Event {
-  const redactedMessage = redact(event.message);
-
-  const redactedMetadata = { ...event.metadata };
-  const shellMetadata = redactedMetadata.shell as any;
-  if (shellMetadata?.output_preview) {
-    shellMetadata.output_preview = redact(shellMetadata.output_preview);
-  }
-
-  return {
-    ...event,
-    message: redactedMessage,
-    metadata: redactedMetadata,
-  };
-}
 
 export async function processEventLog(
   logFile: string,

@@ -1,4 +1,4 @@
-// Utilities for working with nested attributes in dot-notation
+// Shared utilities for working with nested attributes in dot-notation
 
 /**
  * Flatten a nested object to dot-notation
@@ -73,7 +73,10 @@ export function parseAttrFilter(filter: string): {
 /**
  * Get a value from a nested object using dot-notation path
  */
-function getNestedValue(data: Record<string, unknown>, path: string): unknown {
+export function getNestedValue(
+  data: Record<string, unknown>,
+  path: string,
+): unknown {
   const parts = path.split('.');
   let current: unknown = data;
 

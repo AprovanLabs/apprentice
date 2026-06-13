@@ -21,30 +21,12 @@ import {
 import { runChatImport } from './import-chat';
 import { adapters } from './importers';
 import { redact } from './redact';
+import { redactEvent } from './indexer/redact';
 import {
   getEventsWithoutEmbeddings,
   batchUpsertEventEmbeddings,
 } from './search/vector';
 import type { Event } from './types/event';
-
-/**
- * Redact sensitive data from an event
- */
-function redactEvent(event: Event): Event {
-  const redactedMessage = redact(event.message);
-
-  const redactedMetadata = { ...event.metadata };
-  const shellMetadata = redactedMetadata.shell as any;
-  if (shellMetadata?.output_preview) {
-    shellMetadata.output_preview = redact(shellMetadata.output_preview);
-  }
-
-  return {
-    ...event,
-    message: redactedMessage,
-    metadata: redactedMetadata,
-  };
-}
 
 /**
  * Index new events from a log file
