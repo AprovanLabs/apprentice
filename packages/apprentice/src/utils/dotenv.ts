@@ -38,6 +38,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { createLogger } from './logger.js';
 
 type EnvRecord = Record<string, string>;
 type ProcessEnv = NodeJS.ProcessEnv | EnvRecord;
@@ -77,9 +78,7 @@ const supportsAnsi = (): boolean => process.stdout.isTTY;
 const dim = (text: string): string =>
   supportsAnsi() ? `\x1b[2m${text}\x1b[0m` : text;
 
-const log = (msg: string): void => console.log(`[dotenv] ${msg}`);
-const debug = (msg: string): void => console.debug(`[dotenv:debug] ${msg}`);
-const warn = (msg: string): void => console.warn(`[dotenv:warn] ${msg}`);
+const log = createLogger({ namespace: 'dotenv' });
 
 const resolveHome = (envPath: string): string =>
   envPath.startsWith('~') ? path.join(os.homedir(), envPath.slice(1)) : envPath;
@@ -167,12 +166,12 @@ const populate = (
     const exists = Object.prototype.hasOwnProperty.call(target, key);
 
     if (exists && !override) {
-      if (showDebug) debug(`"${key}" already defined, not overwritten`);
+      if (showDebug) log.debug(`"${key}" already defined, not overwritten`);
       continue;
     }
 
     if (exists && showDebug) {
-      debug(`"${key}" already defined, overwritten`);
+      log.debug(`"${key}" already defined, overwritten`);
     }
 
     target[key] = value;
@@ -287,7 +286,7 @@ const configVault = (options: DotenvOptions): DotenvResult => {
   const quiet = parseBoolean(process.env.DOTENV_CONFIG_QUIET ?? options.quiet);
 
   if (showDebug || !quiet) {
-    log('Loading env from encrypted .env.vault');
+    log.info('Loading env from encrypted .env.vault');
   }
 
   const parsed = parseVault(options);
@@ -324,7 +323,7 @@ const configDotenv = (options?: DotenvOptions): DotenvResult => {
       populate(parsedAll, parsed, options);
     } catch (e) {
       if (showDebug)
-        debug(`Failed to load ${filePath}: ${(e as Error).message}`);
+        log.debug(`Failed to load ${filePath}: ${(e as Error).message}`);
       lastError = e as Error;
     }
   }
@@ -346,7 +345,7 @@ const configDotenv = (options?: DotenvOptions): DotenvResult => {
         }
       })
       .join(', ');
-    log(
+    log.info(
       `injected ${count} env var(s) from ${shortPaths} ${dim(
         '-- tip: set DOTENV_CONFIG_QUIET=true to silence',
       )}`,
@@ -368,7 +367,7 @@ export const config = (options?: DotenvOptions): DotenvResult => {
 
   const vaultPath = findVaultPath(options);
   if (!vaultPath) {
-    warn(
+    log.warn(
       `DOTENV_KEY is set but .env.vault file not found. Did you forget to build it?`,
     );
     return configDotenv(options);

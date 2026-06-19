@@ -1,5 +1,6 @@
 import { fastComplete } from '../ai/client';
 import { isAIAvailable } from '../ai/config';
+import { createLogger } from '../utils/logger.js';
 import { AgentRunner, type AgentQuestion } from './agent-runner.js';
 import { loadConfig } from './config.js';
 import { deleteProgressFile, readProgressFile } from './progress-file.js';
@@ -8,6 +9,8 @@ import { ProgressRenderer } from './progress-renderer.js';
 import { SessionManager } from './session-manager.js';
 import { type Session, type SessionProgressFile } from './session.js';
 import { type DaemonConfig, type PlatformAdapter, type IncomingMessage } from './types.js';
+
+const log = createLogger({ namespace: 'Daemon' });
 
 export class AgentDaemon {
   private adapters: Map<string, PlatformAdapter> = new Map();
@@ -57,10 +60,7 @@ export class AgentDaemon {
 
     await this.initializeAdapters();
 
-    console.log(
-      'Agent daemon started, listening on:',
-      [...this.adapters.keys()].join(', '),
-    );
+    log.info('Agent daemon started', { adapters: [...this.adapters.keys()].join(', ') });
 
     process.on('SIGINT', () => this.shutdown());
     process.on('SIGTERM', () => this.shutdown());
@@ -73,9 +73,7 @@ export class AgentDaemon {
         const session = this.sessions.getSession(sessionId);
         if (!session) return;
 
-        console.log(
-          `[Daemon] Progress update for ${sessionId}: ${progress.stage} - ${progress.tasks.estimatedPercentComplete}%`,
-        );
+        log.debug('Progress update', { sessionId, stage: progress.stage, percent: progress.tasks.estimatedPercentComplete });
 
         // Handle waiting state (agent needs input)
         if (progress.stage === 'waiting') {
@@ -99,9 +97,7 @@ export class AgentDaemon {
         const session = this.sessions.getSession(sessionId);
         if (!session) return;
 
-        console.log(
-          `[Daemon] Session ${sessionId} completed: ${progress.stage}`,
-        );
+        log.info('Session completed', { sessionId, stage: progress.stage });
 
         // Stop UI updates
         this.stopUIUpdates(sessionId);
@@ -155,11 +151,11 @@ export class AgentDaemon {
     }
 
     if (this.config.slack?.enabled) {
-      console.log('Slack adapter not yet implemented');
+      log.warn('Slack adapter not yet implemented');
     }
 
     if (this.config.teams?.enabled) {
-      console.log('Teams adapter not yet implemented');
+      log.warn('Teams adapter not yet implemented');
     }
   }
 
@@ -216,12 +212,12 @@ export class AgentDaemon {
       return;
     }
 
-    console.log('[Daemon] Generating thread name...');
+    log.debug('Generating thread name');
     const threadName = await this.generateThreadName(msg.content);
-    console.log(`[Daemon] Thread name: "${threadName}"`);
-    console.log('[Daemon] Creating thread...');
+    log.debug('Thread name generated', { name: threadName });
+    log.debug('Creating thread');
     const thread = await adapter.createThread(msg.channel, threadName);
-    console.log(`[Daemon] Thread created: ${thread.threadId}`);
+    log.info('Thread created', { threadId: thread.threadId });
 
     const repository =
       this.inferRepository(msg) ||
@@ -236,7 +232,7 @@ export class AgentDaemon {
       .replace(/\s+/g, ' ')
       .trim();
 
-    console.log('[Daemon] Creating session...');
+    log.debug('Creating session');
     const session = this.sessions.createSession({
       userId: msg.userId,
       platform: msg.platform,
@@ -244,10 +240,9 @@ export class AgentDaemon {
       task: cleanedTask,
       repository,
     });
-    console.log(`[Daemon] Session created: ${session.id}`);
+    log.info('Session created', { sessionId: session.id });
 
-    // Render initial progress image (use a placeholder until the file is created)
-    console.log('[Daemon] Rendering initial progress image...');
+    log.debug('Rendering initial progress image');
     const initialProgress: SessionProgressFile = {
       sessionId: session.id,
       stage: 'starting',
@@ -258,8 +253,8 @@ export class AgentDaemon {
       updatedAt: new Date().toISOString(),
     };
     const initialImage = await this.renderer.render(initialProgress, 0);
-    console.log(`[Daemon] Initial image size: ${initialImage.length} bytes`);
-    console.log('[Daemon] Sending initial progress message...');
+    log.debug('Initial image rendered', { size: initialImage.length });
+    log.debug('Sending initial progress message');
     const progressMsg = await adapter.sendMessage(thread, {
       image: initialImage,
     });
@@ -267,28 +262,26 @@ export class AgentDaemon {
     this.sessions.updateSession(session.id, {
       progressMessageRef: progressMsg,
     });
-    console.log(`[Daemon] Progress message sent: ${progressMsg.messageId}`);
+    log.debug('Progress message sent', { messageId: progressMsg.messageId });
 
-    console.log('[Daemon] Spawning agent process...');
+    log.info('Spawning agent process');
     const agent = this.runner.spawn({
       sessionId: session.id,
       task: session.task,
       repository: session.repository,
       branch: session.branch,
     });
-    console.log(`[Daemon] Agent spawned with session ID: ${agent.id}`);
+    log.info('Agent spawned', { sessionId: agent.id });
 
-    // Start monitoring the progress file (uses session ID)
-    console.log('[Daemon] Starting progress file monitor...');
+    log.debug('Starting progress file monitor');
     this.progressMonitor.startMonitoring(session.id);
 
-    // Start UI update loop
-    console.log('[Daemon] Starting UI update loop...');
+    log.debug('Starting UI update loop');
     this.startUIUpdates(session, adapter);
 
     // Listen for agent events (questions need immediate handling)
     agent.on('question', async (q: AgentQuestion) => {
-      console.log(`[Daemon] Agent asked question: ${q.question}`);
+      log.info('Agent asked question', { question: q.question });
       await adapter.sendMessage(thread, {
         text: `❓ **Agent needs input:**\n${q.question}${
           q.options ? `\n\nOptions: ${q.options.join(', ')}` : ''
@@ -297,13 +290,11 @@ export class AgentDaemon {
     });
 
     agent.on('complete', async () => {
-      console.log(`[Daemon] Agent completed`);
-      // Progress monitor will handle the rest via file monitoring
+      log.info('Agent completed');
     });
 
     agent.on('error', async (error: Error) => {
-      console.error(`[Daemon] Agent error: ${error.message}`);
-      // Progress monitor will handle the rest via file monitoring
+      log.error('Agent error', { error: error.message });
     });
   }
 
@@ -321,7 +312,7 @@ export class AgentDaemon {
 
         await this.updateProgressUI(currentSession, progress, adapter);
       } catch (error) {
-        console.error('[Daemon] Failed to update progress UI:', error);
+        log.error('Failed to update progress UI', { error });
       }
     }, this.config.progress.updateIntervalMs);
 
@@ -340,15 +331,13 @@ export class AgentDaemon {
     );
 
     try {
-      console.log(
-        `[Daemon] Updating progress UI (${progress.tasks.estimatedPercentComplete}% complete, ${progress.tasks.completed}/${progress.tasks.total} tasks)`,
-      );
+      log.debug('Updating progress UI', { percent: progress.tasks.estimatedPercentComplete, completed: progress.tasks.completed, total: progress.tasks.total });
       const image = await this.renderer.render(progress, elapsedSeconds);
-      console.log(`[Daemon] Rendered image size: ${image.length} bytes`);
+      log.debug('Rendered image', { size: image.length });
       await adapter.editMessage(session.progressMessageRef, { image });
-      console.log(`[Daemon] Progress image updated successfully`);
+      log.debug('Progress image updated');
     } catch (error) {
-      console.error('[Daemon] Failed to update progress:', error);
+      log.error('Failed to update progress', { error });
     }
   }
 
@@ -364,21 +353,14 @@ export class AgentDaemon {
     session: Session,
     response: string,
   ): Promise<void> {
-    console.log(
-      `[Daemon] User response in session ${session.id}: ${response.slice(
-        0,
-        50,
-      )}...`,
-    );
+    log.debug('User response received', { sessionId: session.id, response: response.slice(0, 50) });
     const agent = this.runner.getProcess(session.agentProcessId!);
     if (!agent) {
-      console.error(
-        `[Daemon] No agent process found for session ${session.id}`,
-      );
+      log.error('No agent process found for session', { sessionId: session.id });
       return;
     }
 
-    console.log(`[Daemon] Sending input to agent ${session.agentProcessId}`);
+    log.debug('Sending input to agent', { agentProcessId: session.agentProcessId });
     await agent.sendInput(response);
   }
 
@@ -397,38 +379,36 @@ export class AgentDaemon {
       .replace(/\s+/g, ' ')
       .trim();
 
-    console.log(
-      `[Daemon] Cleaned content for thread name: "${cleaned.slice(0, 100)}"`,
-    );
+    log.debug('Cleaned content for thread name', { content: cleaned.slice(0, 100) });
 
     if (!isAIAvailable()) {
-      console.log('[Daemon] AI not available, using fallback thread name');
+      log.debug('AI not available, using fallback thread name');
       return `Agent: ${cleaned.slice(0, 50)}`;
     }
 
     try {
-      console.log('[Daemon] Requesting AI-generated thread name...');
+      log.debug('Requesting AI-generated thread name');
       const result = await fastComplete(
         `Task: "${cleaned}"\n\nGenerate a SHORT thread title (max 40 chars). Use title case. Be specific. Examples:\n- "Fix Login Bug"\n- "Add Dark Mode"\n- "Update Dependencies"\n\nTitle:`,
         "You create concise thread titles for coding tasks. Use 2-5 words maximum. No sentences. Title case. Be specific about what's being done.",
       );
 
-      console.log(`[Daemon] AI response: "${result.text}"`);
+      log.debug('AI response received', { text: result.text });
       const generated = result.text
         .trim()
         .replace(/^["']|["']$/g, '')
         .replace(/^Title:\s*/i, '')
         .slice(0, 40);
-      console.log(`[Daemon] Generated thread name: "${generated}"`);
+      log.debug('Generated thread name', { name: generated });
       return generated || `Agent: ${cleaned.slice(0, 35)}`;
     } catch (error) {
-      console.error(`[Daemon] Failed to generate thread name:`, error);
+      log.error('Failed to generate thread name', { error });
       return `Agent: ${cleaned.slice(0, 35)}`;
     }
   }
 
   public async shutdown(): Promise<void> {
-    console.log('Shutting down agent daemon...');
+    log.info('Shutting down agent daemon');
 
     // Stop progress monitoring
     this.progressMonitor.stopAll();
@@ -448,7 +428,7 @@ export class AgentDaemon {
     await this.runner.cancelAll();
 
     for (const [name, adapter] of this.adapters) {
-      console.log(`Disconnecting ${name}...`);
+      log.info('Disconnecting adapter', { name });
       await adapter.disconnect();
     }
 
